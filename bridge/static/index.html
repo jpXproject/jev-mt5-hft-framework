@@ -225,6 +225,30 @@
     </div>
   </header>
 
+  <!-- Target Recovery Progress Bar -->
+  <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:10px; padding:12px 18px; margin-bottom:15px; box-shadow:0 4px 15px rgba(0,0,0,0.3);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <div>
+        <span style="font-size:13px; font-weight:700; color:var(--accent-gold);">🎯 TARGET RECOVERY: 1,000.00 USC</span>
+        <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-muted); margin-left:8px;" id="recovery-stage-text">STAGE 1: Stabilisasi & Rebound (Lot 0.01)</span>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; color:var(--accent-cyan);" id="recovery-pct-text">
+        25.24% (252.38 / 1,000.00 USC)
+      </div>
+    </div>
+    <div style="width:100%; height:12px; background:rgba(255,255,255,0.06); border-radius:6px; overflow:hidden; border:1px solid rgba(255,255,255,0.1);">
+      <div id="recovery-bar" style="width:25.24%; height:100%; background:linear-gradient(90deg, #00f0ff, #ffd700); transition:width 0.4s ease; border-radius:6px;"></div>
+    </div>
+    <div style="display:flex; justify-content:space-between; font-size:10px; font-family:'JetBrains Mono',monospace; color:var(--text-muted); margin-top:6px;">
+      <span>Baseline: 252.38 USC</span>
+      <span>Stage 1: 350 USC</span>
+      <span>Stage 2: 500 USC</span>
+      <span>Stage 3: 700 USC</span>
+      <span>Stage 4: 850 USC</span>
+      <span style="color:var(--accent-gold); font-weight:700;">Goal: 1,000 USC</span>
+    </div>
+  </div>
+
   <div class="grid-metrics">
     <div class="card">
       <div class="card-title">Live Chart Symbol & Mid Price</div>
@@ -547,6 +571,23 @@
             
             const netSign = snap.net_lot >= 0 ? '+' : '';
             document.getElementById('inv-dd').innerText = `${netSign}${snap.net_lot.toFixed(2)} Lot (${snap.drawdown_pct.toFixed(2)}%)`;
+
+            if(snap.recovery) {
+              const rec = snap.recovery;
+              const pctEl = document.getElementById('recovery-pct-text');
+              const barEl = document.getElementById('recovery-bar');
+              const stageEl = document.getElementById('recovery-stage-text');
+              if(pctEl) pctEl.innerText = `${rec.progress_pct}% (${rec.current.toFixed(2)} / ${rec.target.toFixed(2)} USC)`;
+              if(barEl) barEl.style.width = `${rec.progress_pct}%`;
+              const stageNames = {
+                1: 'STAGE 1: Stabilisasi & Rebound (Lot 0.01)',
+                2: 'STAGE 2: Pondasi Konservatif (Lot 0.01)',
+                3: 'STAGE 3: Akselerasi Momentum (Lot 0.02)',
+                4: 'STAGE 4: Penetrasi Target (Lot 0.02)',
+                5: 'STAGE 5: Target Final Run (Lot 0.03)'
+              };
+              if(stageEl) stageEl.innerText = stageNames[rec.stage] || `STAGE ${rec.stage}`;
+            }
           }
 
           if(data.battery) {

@@ -233,6 +233,11 @@ def mt5_live_poller():
                     skew = net_lot * gamma * (sigma ** 2) * 1.0
                     reserv_price = mid - skew
 
+                    rec_target = 1000.0
+                    rec_pct = min(100.0, (acc.balance / rec_target) * 100.0) if acc.balance > 0 else 0.0
+                    rec_rem = max(0.0, rec_target - acc.balance)
+                    rec_stage = 1 if acc.balance < 350.0 else (2 if acc.balance < 500.0 else (3 if acc.balance < 700.0 else (4 if acc.balance < 850.0 else 5)))
+
                     snap = {
                         "as_of": int(tick.time),
                         "symbol": symbol,
@@ -244,7 +249,14 @@ def mt5_live_poller():
                         "equity": round(acc.equity, 2),
                         "balance": round(acc.balance, 2),
                         "drawdown_pct": round(dd_pct, 2),
-                        "reservation_price": round(reserv_price, 3)
+                        "reservation_price": round(reserv_price, 3),
+                        "recovery": {
+                            "target": rec_target,
+                            "current": round(acc.balance, 2),
+                            "progress_pct": round(rec_pct, 2),
+                            "remaining_usc": round(rec_rem, 2),
+                            "stage": rec_stage
+                        }
                     }
 
                     # Fetch closed deals (every 2 seconds)

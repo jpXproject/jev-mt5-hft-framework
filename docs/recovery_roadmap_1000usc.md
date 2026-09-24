@@ -1,84 +1,65 @@
-# 🎯 BLUEPRINT RECOVERY ROADMAP: 321.38 USC ➡️ 1,000.00 USC
+# 🎯 BLUEPRINT RECOVERY ROADMAP: 252.38 USC ➡️ 1,000.00 USC
 **jpXCode Jev-MT5 Quantitative Algorithmic Trading Framework**  
-*Simbol: XAUUSDc (Gold Cent) | Broker: Exness Real 36 | Baseline Awal: 321.38 USC*
+*Simbol: XAUUSDc (Gold Cent) | Broker: Exness Real 36 | Baseline Terkini: 252.38 USC | Target: 1,000.00 USC*
 
 ---
 
-## 1. Parameter Utama & Metrik Pemulihan
+## 1. Parameter Utama & Metrik Pemulihan (Recovery Baseline)
 
-| Metrik | Nilai / Spesifikasi | Catatan |
+| Metrik | Nilai / Spesifikasi | Keterangan |
 | :--- | :--- | :--- |
-| **Saldo Baseline Saat Ini** | **321.38 USC** | Akun Riil #257549152 |
-| **Target Saldo Akhir** | **1,000.00 USC** | Target Recovery Milestone |
-| **Kekurangan Saldo (Delta)** | **+678.62 USC** | Total Net Profit yang dibutuhkan |
-| **Persentase Pertumbuhan** | **+211.16%** | Pertumbuhan bertahap (Compounding) |
-| **Model Risiko** | **L2 Conservative Fixed Fraction** | Max risk per trade $\le 1.0\%$ |
-| **Risk to Reward (R:R)** | **1 : 1.4 ~ 1 : 1.8** | SL 260-350 pts vs TP 380-600 pts |
-| **Perkiraan Total Siklus Trade** | **~100 - 120 Posisi** | Dengan target Win Rate $\ge 65\%$ |
+| **Saldo Baseline Saat Ini** | **252.38 USC** | Akun Riil Exness #257549152 |
+| **Target Saldo Akhir** | **1,000.00 USC** | Target Recovery Utama |
+| **Kekurangan Saldo (Delta)** | **+747.62 USC** | Total Net Profit Kumulatif |
+| **Persentase Pertumbuhan Target** | **+296.23%** | Model Pertumbuhan Bertahap (Compounded Staging) |
+| **Model Risiko** | **L2 Conservative Fixed Fraction** | Risiko per trade $\le 0.6\%$ saldo |
+| **Risk to Reward (R:R)** | **1 : 1.7 ~ 1 : 2.5** | SL 850-1,200 pts vs TP 1,500-2,500 pts |
+| **Perkiraan Total Siklus Trade** | **~110 - 120 Posisi** | Dengan Target Win Rate $\ge 65\%$ |
 
 ---
 
-## 2. Tahapan Eksekusi Bertahap (4-Stage Tiered Milestones)
+## 2. Peta Tahapan Pemulihan 5 Tingkat (5-Stage Tiered Execution)
 
-Untuk menjaga akun terhindar dari Margin Call atau Drawdown ekstrem, ukuran lot **hanya dinaikkan secara bertahap setelah setiap checkpoint tercapai secara nyata**:
+Ukuran lot tidak boleh dinaikkan secara sembarangan, melainkan **hanya naik otomatis saat saldo akun riil melampaui batas stage**:
 
 ```mermaid
 graph LR
-    M0["Start: 321.38 USC<br/>(Lot 0.01)"] --> M1["Milestone 1: 450 USC<br/>(+128.62 USC)"]
-    M1 --> M2["Milestone 2: 600 USC<br/>(+150.00 USC)"]
-    M2 --> M3["Milestone 3: 800 USC<br/>(+200.00 USC)"]
-    M3 --> M4["Milestone 4: 1,000 USC<br/>TARGET TERCAPAI 🎯"]
+    S0["Baseline: 252.38 USC<br/>(Lot 0.01)"] --> S1["Stage 1: 350 USC<br/>(+97.62 USC)"]
+    S1 --> S2["Stage 2: 500 USC<br/>(+150.00 USC)"]
+    S2 --> S3["Stage 3: 700 USC<br/>(+200.00 USC)"]
+    S3 --> S4["Stage 4: 850 USC<br/>(+150.00 USC)"]
+    S4 --> S5["Stage 5: 1,000 USC<br/>GOAL ACHIEVED 🎯"]
 ```
 
-### Rincian Tiap Milestone:
+### Tabel Rincian 5-Stage Recovery:
 
-#### 🟢 TAHAP 1: Foundation Building (321.38 ➡️ 450.00 USC)
-- **Ukuran Lot:** `0.01 Lot` (Strict minimum).
-- **Target Profit Tahap:** `+128.62 USC`.
-- **Rata-rata Profit per Win:** `+3.50` s/d `+4.50 USC`.
-- **Target Kemenangan Bersih:** ~32 trades kemenangan bersih.
-- **Max Risiko per Trade:** `1.00 - 2.50 USC` (<0.8% balance).
-- **Fokus:** Menjaga drawdown di bawah 3%, mengunci modal awal.
-
-#### 🟡 TAHAP 2: Conservative Acceleration (450.00 ➡️ 600.00 USC)
-- **Ukuran Lot:** `0.01` s/d `0.02 Lot`.
-- **Target Profit Tahap:** `+150.00 USC`.
-- **Rata-rata Profit per Win:** `+5.00` s/d `+7.00 USC`.
-- **Target Kemenangan Bersih:** ~25 trades kemenangan bersih.
-- **Max Risiko per Trade:** `3.00 USC` (<0.6% balance).
-
-#### 🟠 TAHAP 3: Scaling Momentum (600.00 ➡️ 800.00 USC)
-- **Ukuran Lot:** `0.02 Lot`.
-- **Target Profit Tahap:** `+200.00 USC`.
-- **Rata-rata Profit per Win:** `+7.50` s/d `+10.00 USC`.
-- **Target Kemenangan Bersih:** ~22 trades kemenangan bersih.
-- **Max Risiko per Trade:** `4.50 USC` (<0.6% balance).
-
-#### 🔴 TAHAP 4: Target Final Run (800.00 ➡️ 1,000.00 USC)
-- **Ukuran Lot:** `0.02` s/d `0.03 Lot`.
-- **Target Profit Tahap:** `+200.00 USC`.
-- **Rata-rata Profit per Win:** `+10.00` s/d `+14.00 USC`.
-- **Target Kemenangan Bersih:** ~18 trades kemenangan bersih.
-- **Pencapaian:** Target 1,000 USC tercapai. Sistem otomatis mengunci margin dan mengembalikan ke mode konservatif flat.
+| TAHAPAN (STAGE) | RENTANG SALDO | LOT DINAMIS | TARGET PROFIT TAHAP | EST. NET WINS | SL / TP AVERAGE | MAKS. RISIKO PER TRADE |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Stage 1: Rebound & Stabilisasi** | `252.38 ➡️ 350.00 USC` | `0.01 Lot` | **+97.62 USC** | ~25 trades | SL 850 pts / TP 1,500 pts | 1.00 - 1.50 USC (<0.6%) |
+| **Stage 2: Pondasi Konservatif** | `350.00 ➡️ 500.00 USC` | `0.01 Lot` | **+150.00 USC** | ~33 trades | SL 900 pts / TP 1,600 pts | 1.50 - 2.00 USC (<0.5%) |
+| **Stage 3: Akselerasi Momentum** | `500.00 ➡️ 700.00 USC` | `0.02 Lot` | **+200.00 USC** | ~25 trades | SL 1,000 pts / TP 1,800 pts | 3.00 - 3.50 USC (<0.5%) |
+| **Stage 4: Penetrasi Target** | `700.00 ➡️ 850.00 USC` | `0.02 Lot` | **+150.00 USC** | ~18 trades | SL 1,000 pts / TP 2,000 pts | 3.50 - 4.00 USC (<0.5%) |
+| **Stage 5: Final Target Run** | `850.00 ➡️ 1,000.00 USC` | `0.025 / 0.03 Lot` | **+150.00 USC** | ~13 trades | SL 1,200 pts / TP 2,500 pts | 5.00 USC (<0.5%) |
+| **GOAL COMPLETED 🎯** | **1,000.00 USC** | `0.01 (Lockdown)` | **+747.62 USC** | **~114 Trades** | - | **Auto Flatten / Capital Preservation** |
 
 ---
 
-## 3. Matriks Manajemen Risiko & Veto Hard Limits
+## 3. Disiplin Operasional & Proteksi Akun
 
-1. **Daily Max Loss Limit (Circuit Breaker):**
-   - Jika dalam 1 hari mengalami kerugian kumulatif $\ge 15.00$ USC, AI Co-Pilot **wajib pause transaksi selama 4 jam**.
-2. **Spread Spike Veto:**
-   - Tidak ada order yang dieksekusi jika spread emas $> 350$ poin (misal saat berita high-impact CPI / FOMC).
-3. **Breakeven Lock Engine:**
-   - Setiap posisi yang mengambang profit $\ge +150$ poin (+1.50 USC) secara otomatis digeser SL-nya ke $+40$ poin untuk menjamin **Risk-Free Trade**.
-4. **Zero Overtrading Policy:**
-   - Jeda minimal antar-posisi adalah 25 detik setelah posisi sebelumnya ditutup untuk menghindari false whip-saw.
+1. **Anti-Martingale / Zero Revenge Trading:**
+   - Tidak ada pelipatan lot setelah posisi kalah. Ukuran lot selalu kembali ke spesifikasi Stage berjalan.
+2. **Buffer Spread Terjaga:**
+   - SL minimum selalu disetel di atas 850 poin (0.85 USD) untuk mencegah posisi tertebas oleh spread broker (~260 poin).
+3. **Breakeven Profit Locking:**
+   - Begitu running profit mencapai $\ge +400$ poin (+4.00 USC pada 0.01 lot), Stop Loss otomatis digeser ke $+80$ poin untuk mengunci profit minimal.
+4. **Daily Cutoff / Veto Drawdown:**
+   - Maksimum toleransi kerugian harian dipatok pada $15.00$ USC. Jika tercapai, AI Co-Pilot berhenti otomatis selama 4 jam.
 
 ---
 
-## 4. Pelacakan Telemetri & Dashboard
+## 4. Pelacakan Real-Time
 
-Progres persentase menuju 1,000 USC dilacak langsung di:
-- **Web Dashboard:** `http://127.0.0.1:8765`
-- **Rumus Progres:** $\text{Progress (\%)} = \frac{\text{Current Balance}}{1000.00} \times 100\%$
-  - Saldo saat ini 321.38 USC = **32.14% Menuju Target 1,000 USC**.
+- **Live Web Dashboard:** `http://127.0.0.1:8765`
+- **Rumus Progres Live:**
+  $$\text{Progress (\%)} = \frac{252.38}{1,000.00} \times 100\% = \mathbf{25.24\%}$$
+- Dashboard menampilkan progress bar terintegrasi yang ter-update otomatis tiap 250ms.
