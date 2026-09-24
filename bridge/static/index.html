@@ -230,17 +230,17 @@
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
       <div>
         <span style="font-size:13px; font-weight:700; color:var(--accent-gold);">🎯 TARGET RECOVERY: 1,000.00 USC</span>
-        <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-muted); margin-left:8px;" id="recovery-stage-text">STAGE 1: Stabilisasi & Rebound (Lot 0.01)</span>
+        <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-muted); margin-left:8px;" id="recovery-stage-text">STAGE 1: Rebound (Lot 0.01)</span>
       </div>
       <div style="font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; color:var(--accent-cyan);" id="recovery-pct-text">
-        25.24% (252.38 / 1,000.00 USC)
+        Sinkronisasi Saldo MT5...
       </div>
     </div>
     <div style="width:100%; height:12px; background:rgba(255,255,255,0.06); border-radius:6px; overflow:hidden; border:1px solid rgba(255,255,255,0.1);">
-      <div id="recovery-bar" style="width:25.24%; height:100%; background:linear-gradient(90deg, #00f0ff, #ffd700); transition:width 0.4s ease; border-radius:6px;"></div>
+      <div id="recovery-bar" style="width:7.83%; height:100%; background:linear-gradient(90deg, #00f0ff, #ffd700); transition:width 0.4s ease; border-radius:6px;"></div>
     </div>
     <div style="display:flex; justify-content:space-between; font-size:10px; font-family:'JetBrains Mono',monospace; color:var(--text-muted); margin-top:6px;">
-      <span>Baseline: 252.38 USC</span>
+      <span id="rec-baseline-text">Saldo Real: 78.28 USC</span>
       <span>Stage 1: 350 USC</span>
       <span>Stage 2: 500 USC</span>
       <span>Stage 3: 700 USC</span>
@@ -265,7 +265,14 @@
     </div>
   </div>
 
-  <div class="grid-metrics">
+  <div class="grid-metrics" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+    <div class="card" style="border-left: 3px solid var(--accent-green);">
+      <div class="card-title">Saldo Akun MT5 (Real Cent)</div>
+      <div class="card-value" id="acc-balance-display" style="color:var(--accent-green);">78.28 USC</div>
+      <div style="font-size:11px; font-family:'JetBrains Mono',monospace; color:var(--text-muted); margin-top:4px;" id="acc-meta-display">
+        Equity: 78.28 USC | #257549152 (Exness)
+      </div>
+    </div>
     <div class="card">
       <div class="card-title">Live Chart Symbol & Mid Price</div>
       <div class="card-value" id="mid-price">XAUUSDc 4,265.50</div>
@@ -587,6 +594,18 @@
             
             const netSign = snap.net_lot >= 0 ? '+' : '';
             document.getElementById('inv-dd').innerText = `${netSign}${snap.net_lot.toFixed(2)} Lot (${snap.drawdown_pct.toFixed(2)}%)`;
+
+            // Live MT5 Account Sync
+            const balEl = document.getElementById('acc-balance-display');
+            const metaEl = document.getElementById('acc-meta-display');
+            const baseEl = document.getElementById('rec-baseline-text');
+            if(balEl) balEl.innerText = `${snap.balance.toFixed(2)} USC`;
+            if(metaEl) {
+              const accLogin = (snap.account && snap.account.login) ? snap.account.login : '257549152';
+              const accServer = (snap.account && snap.account.server) ? snap.account.server : 'Exness-MT5Real36';
+              metaEl.innerText = `Equity: ${snap.equity.toFixed(2)} USC | #${accLogin} (${accServer})`;
+            }
+            if(baseEl) baseEl.innerText = `Saldo Real: ${snap.balance.toFixed(2)} USC`;
 
             if(snap.recovery) {
               const rec = snap.recovery;

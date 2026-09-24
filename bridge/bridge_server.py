@@ -251,6 +251,14 @@ def mt5_live_poller():
                     snap = {
                         "as_of": int(tick.time),
                         "symbol": symbol,
+                        "account": {
+                            "login": acc.login,
+                            "server": acc.server,
+                            "currency": acc.currency,
+                            "balance": round(acc.balance, 2),
+                            "equity": round(acc.equity, 2),
+                            "margin_free": round(acc.margin_free, 2)
+                        },
                         "mid": round(mid, 3),
                         "spread_bps": round(spread_bps, 2),
                         "vwap": round(vwap, 3),
