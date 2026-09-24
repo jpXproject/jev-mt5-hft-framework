@@ -1,0 +1,19 @@
+{
+  "system_name": "Jev-MT5 HFT Framework",
+  "version": "1.0.0",
+  "author": "jpXCode Pro",
+  "port": 8765,
+  "risk_limits": {
+    "max_drawdown_pct": 3.0,
+    "max_daily_loss_usd": 50.0,
+    "max_lot_cap": 0.10,
+    "max_spread_pts": 50.0,
+    "min_margin_level_pct": 200.0,
+    "max_latency_ms": 800
+  },
+  "pricing": {
+    "gamma": 0.1,
+    "sigma": 0.02,
+    "time_horizon": 1.0
+  }
+}

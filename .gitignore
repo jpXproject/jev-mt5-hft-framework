@@ -1,0 +1,14 @@
+# Environment & Secrets
+.env
+*.log
+__pycache__/
+*.pyc
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
