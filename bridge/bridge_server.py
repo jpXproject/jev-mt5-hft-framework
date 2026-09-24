@@ -202,15 +202,28 @@ def mt5_live_poller():
                     else:
                         vwap = mid
 
-                    # Net positions
+                    # Net positions and open positions list
                     positions = mt5.positions_get(symbol=symbol)
                     net_lot = 0.0
+                    open_pos_list = []
                     if positions:
                         for p in positions:
                             if p.type == mt5.POSITION_TYPE_BUY:
                                 net_lot += p.volume
                             elif p.type == mt5.POSITION_TYPE_SELL:
                                 net_lot -= p.volume
+                            open_pos_list.append({
+                                "ticket": p.ticket,
+                                "time": time.strftime("%H:%M:%S", time.localtime(p.time)),
+                                "type": "BUY" if p.type == mt5.POSITION_TYPE_BUY else "SELL",
+                                "volume": p.volume,
+                                "open_price": round(p.price_open, 3),
+                                "cur_price": round(p.price_current, 3),
+                                "sl": round(p.sl, 3),
+                                "tp": round(p.tp, 3),
+                                "profit": round(p.profit, 2)
+                            })
+                    telemetry_state["open_positions"] = open_pos_list
 
                     dd_pct = ((acc.balance - acc.equity) / acc.balance * 100.0) if acc.balance > 0 else 0.0
 
@@ -233,6 +246,30 @@ def mt5_live_poller():
                         "drawdown_pct": round(dd_pct, 2),
                         "reservation_price": round(reserv_price, 3)
                     }
+
+                    # Fetch closed deals (every 2 seconds)
+                    if time.time() - last_eval_time > 2.0:
+                        import datetime
+                        now_dt = datetime.datetime.now()
+                        start_dt = now_dt.replace(hour=0, minute=0, second=0)
+                        deals = mt5.history_deals_get(start_dt, now_dt)
+                        closed_deals_list = []
+                        if deals:
+                            for d in reversed(deals):
+                                if d.symbol == symbol and d.entry == mt5.DEAL_ENTRY_OUT:
+                                    closed_deals_list.append({
+                                        "ticket": d.ticket,
+                                        "order": d.order,
+                                        "time": time.strftime("%H:%M:%S", time.localtime(d.time)),
+                                        "type": "SELL" if d.type == mt5.DEAL_TYPE_SELL else "BUY",
+                                        "volume": d.volume,
+                                        "price": round(d.price, 3),
+                                        "profit": round(d.profit, 2),
+                                        "comment": d.comment
+                                    })
+                                    if len(closed_deals_list) >= 10:
+                                        break
+                        telemetry_state["closed_deals"] = closed_deals_list
 
                     # Periodic Battery Evaluation
                     if time.time() - last_eval_time > 3.0:

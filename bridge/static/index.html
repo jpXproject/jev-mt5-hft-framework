@@ -318,6 +318,56 @@
         <div class="risk-item"><span><span class="status-dot dot-ok"></span>Margin Level (&gt;200%)</span><span>PASS</span></div>
         <div class="risk-item"><span><span class="status-dot dot-ok"></span>Lot Cap (&le;0.10)</span><span>PASS</span></div>
       </div>
+  <!-- Real-time Positions & Deals Ledger Section -->
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px;">
+    <!-- Active Open Positions -->
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <span class="card-title" style="margin:0;">🟢 POSISI TERBUKA AKTIF (LIVE OPEN POSITIONS)</span>
+        <span id="open-count-badge" class="badge badge-run">0 POSISI</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%; font-family:'JetBrains Mono',monospace; font-size:11px; border-collapse:collapse;" id="open-table">
+          <thead>
+            <tr style="color:var(--text-muted); text-align:left; border-bottom:1px solid var(--border);">
+              <th style="padding:6px;">TIKET</th>
+              <th style="padding:6px;">TIPE</th>
+              <th style="padding:6px;">LOT</th>
+              <th style="padding:6px;">OPEN</th>
+              <th style="padding:6px;">SL / TP</th>
+              <th style="padding:6px; text-align:right;">PNL (USC)</th>
+            </tr>
+          </thead>
+          <tbody id="open-tbody">
+            <tr><td colspan="6" style="padding:10px; text-align:center; color:var(--text-muted);">Tidak ada posisi aktif</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Recent Closed Deals -->
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <span class="card-title" style="margin:0;">📜 RIWAYAT CLOSE ORDER TERBARU (CLOSED DEALS)</span>
+        <span class="badge" style="background:rgba(148,163,184,0.15); color:var(--text-muted); border:1px solid var(--border);">HARI INI</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%; font-family:'JetBrains Mono',monospace; font-size:11px; border-collapse:collapse;" id="closed-table">
+          <thead>
+            <tr style="color:var(--text-muted); text-align:left; border-bottom:1px solid var(--border);">
+              <th style="padding:6px;">ORDER</th>
+              <th style="padding:6px;">TIPE</th>
+              <th style="padding:6px;">LOT</th>
+              <th style="padding:6px;">EXIT</th>
+              <th style="padding:6px;">JAM</th>
+              <th style="padding:6px; text-align:right;">PROFIT</th>
+            </tr>
+          </thead>
+          <tbody id="closed-tbody">
+            <tr><td colspan="6" style="padding:10px; text-align:center; color:var(--text-muted);">Memuat riwayat...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -521,8 +571,65 @@
           if(data.tick_history) {
             renderChart(data.tick_history);
           }
+
+          if(data.open_positions) {
+            renderOpenPositions(data.open_positions);
+          }
+
+          if(data.closed_deals) {
+            renderClosedDeals(data.closed_deals);
+          }
         }
       } catch(e) {}
+    }
+
+    function renderOpenPositions(positions) {
+      const tbody = document.getElementById('open-tbody');
+      if(!tbody) return;
+      if(!positions || positions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="padding:10px; text-align:center; color:var(--text-muted);">Tidak ada posisi aktif saat ini (Flat)</td></tr>';
+        return;
+      }
+      let html = '';
+      positions.forEach(p => {
+        const pColor = p.profit >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+        const tColor = p.type === 'BUY' ? 'var(--accent-green)' : 'var(--accent-red)';
+        const sign = p.profit > 0 ? '+' : '';
+        html += `<tr style="border-bottom:1px solid rgba(51,65,85,0.4);">
+          <td style="padding:6px; font-weight:bold;">#${p.ticket}</td>
+          <td style="padding:6px; color:${tColor}; font-weight:bold;">${p.type}</td>
+          <td style="padding:6px;">${p.volume}</td>
+          <td style="padding:6px;">${p.open_price}</td>
+          <td style="padding:6px;">${p.cur_price}</td>
+          <td style="padding:6px; color:var(--text-muted); font-size:10px;">${p.sl} / ${p.tp}</td>
+          <td style="padding:6px; text-align:right; font-weight:bold; color:${pColor};">${sign}${p.profit.toFixed(2)} USC</td>
+        </tr>`;
+      });
+      tbody.innerHTML = html;
+    }
+
+    function renderClosedDeals(deals) {
+      const tbody = document.getElementById('closed-tbody');
+      if(!tbody) return;
+      if(!deals || deals.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="padding:10px; text-align:center; color:var(--text-muted);">Belum ada posisi tertutup hari ini</td></tr>';
+        return;
+      }
+      let html = '';
+      deals.forEach(d => {
+        const pColor = d.profit >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+        const tColor = d.type === 'BUY' ? 'var(--accent-green)' : 'var(--accent-red)';
+        const sign = d.profit > 0 ? '+' : '';
+        html += `<tr style="border-bottom:1px solid rgba(51,65,85,0.4);">
+          <td style="padding:6px;">#${d.order || d.ticket}</td>
+          <td style="padding:6px; color:${tColor}; font-weight:bold;">${d.type}</td>
+          <td style="padding:6px;">${d.volume}</td>
+          <td style="padding:6px;">${d.price}</td>
+          <td style="padding:6px; color:var(--text-muted);">${d.time}</td>
+          <td style="padding:6px; text-align:right; font-weight:bold; color:${pColor};">${sign}${d.profit.toFixed(2)} USC</td>
+        </tr>`;
+      });
+      tbody.innerHTML = html;
     }
 
     // High frequency 250ms interactive polling (continuous autorefresh)
