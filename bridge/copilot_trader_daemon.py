@@ -38,8 +38,8 @@ MAGIC_NUMBER = 20260925
 FIXED_LOT = 0.01  # L2 Small lot constraint baseline
 TARGET_RECOVERY_BALANCE = 1000.0  # Milestone target 1000 USC
 MAX_OPEN_POSITIONS = 1
-MAX_SPREAD_POINTS = 350.0  # Max spread acceptable
-MIN_COOLDOWN_SEC = 25  # Minimum rest after position closed
+MAX_SPREAD_POINTS = 320.0  # Max spread acceptable (Gold Cent ~260 pts)
+MIN_COOLDOWN_SEC = 180  # 3-minute cooldown between trades to avoid spread whipsaw
 STOP_TIME_HOUR = 3
 STOP_TIME_MINUTE = 55  # Stop trading at 03:55 AM WIB before 04:00 market rollover
 
@@ -103,8 +103,12 @@ def calculate_indicators(symbol: str):
             res.append(val * k + res[-1] * (1.0 - k))
         return res
 
-    ema9 = ema(closes, 9)[-1]
-    ema21 = ema(closes, 21)[-1]
+    ema9_series = ema(closes, 9)
+    ema21_series = ema(closes, 21)
+    ema9 = ema9_series[-1]
+    ema21 = ema21_series[-1]
+    prev_ema9 = ema9_series[-2]
+    prev_ema21 = ema21_series[-2]
 
     # VWAP
     cum_pv = sum(((h + l + c) / 3.0) * v for h, l, c, v in zip(highs, lows, closes, vols))
@@ -140,6 +144,8 @@ def calculate_indicators(symbol: str):
         "close": closes[-1],
         "ema9": ema9,
         "ema21": ema21,
+        "prev_ema9": prev_ema9,
+        "prev_ema21": prev_ema21,
         "vwap": vwap,
         "rsi": rsi,
         "atr": atr
@@ -379,45 +385,43 @@ def run_copilot():
             rsi = ind["rsi"]
             atr = ind["atr"]
 
-            # Dynamic SL/TP based on ATR (minimum 250 pts, max 500 pts)
+            # Dynamic SL/TP based on ATR (Gold cent spread buffer: SL min 850 pts, TP min 1500 pts)
             point = sym_info.point
-            calc_sl_pts = max(260.0, min(500.0, (atr * 1.5) / point))
-            calc_tp_pts = max(380.0, min(750.0, (atr * 2.2) / point))
+            calc_sl_pts = max(850.0, min(1800.0, (atr * 2.5) / point))
+            calc_tp_pts = max(1500.0, min(3200.0, (atr * 4.0) / point))
 
-            # Strategy: Trend Following + Mean Reversion Guard
-            # BUY Condition:
-            # - EMA9 > EMA21 (Bullish micro-trend)
-            # - Price > VWAP (Above fair session value)
-            # - RSI between 42 and 66 (Healthy momentum, not severely overbought)
-            buy_signal = (ema9 > ema21) and (close > vwap) and (42.0 <= rsi <= 66.0)
+            # Strategy: Fresh Crossover Momentum + Mean Reversion Guard
+            prev_ema9 = ind.get("prev_ema9", ema9)
+            prev_ema21 = ind.get("prev_ema21", ema21)
 
-            # SELL Condition:
-            # - EMA9 < EMA21 (Bearish micro-trend)
-            # - Price < VWAP (Below fair session value)
-            # - RSI between 34 and 58 (Healthy downward momentum, not severely oversold)
-            sell_signal = (ema9 < ema21) and (close < vwap) and (34.0 <= rsi <= 58.0)
+            # Crossover signals (only trigger on fresh crossing)
+            bullish_cross = (prev_ema9 <= prev_ema21) and (ema9 > ema21)
+            bearish_cross = (prev_ema9 >= prev_ema21) and (ema9 < ema21)
+
+            buy_signal = bullish_cross and (close > vwap) and (45.0 <= rsi <= 65.0)
+            sell_signal = bearish_cross and (close < vwap) and (35.0 <= rsi <= 55.0)
 
             # Dynamic Lot & Recovery Sizing
             acc = mt5.account_info()
-            current_balance = acc.balance if acc else 321.38
+            current_balance = acc.balance if acc else 271.18
             rec_status = get_recovery_progress(current_balance)
             current_lot = get_dynamic_lot(current_balance)
 
             if buy_signal:
-                reason = f"BullCross EMA9>21 | RSI={rsi:.1f} | DevVWAP=+{(close-vwap):.2f}"
+                reason = f"BullCross EMA9x21 | RSI={rsi:.1f} | DevVWAP=+{(close-vwap):.2f}"
                 logger.info(f"⚡ AI BUY SIGNAL TRIGGERED: {reason} | Lot={current_lot} | Recovery={rec_status['progress_pct']}%")
                 res = execute_order("BUY", SYMBOL, current_lot, calc_sl_pts, calc_tp_pts, reason)
                 if res:
                     last_trade_time = time.time()
 
             elif sell_signal:
-                reason = f"BearCross EMA9<21 | RSI={rsi:.1f} | DevVWAP={(close-vwap):.2f}"
+                reason = f"BearCross EMA9x21 | RSI={rsi:.1f} | DevVWAP={(close-vwap):.2f}"
                 logger.info(f"⚡ AI SELL SIGNAL TRIGGERED: {reason} | Lot={current_lot} | Recovery={rec_status['progress_pct']}%")
                 res = execute_order("SELL", SYMBOL, current_lot, calc_sl_pts, calc_tp_pts, reason)
                 if res:
                     last_trade_time = time.time()
 
-            if loop_count % 20 == 0:
+            if loop_count % 30 == 0:
                 logger.info(f"[MONITOR] XAUUSDc={close:.3f} | Bal={current_balance:.2f} USC (Prog: {rec_status['progress_pct']}%, Stage {rec_status['stage']}) | Spread={spread_pts:.0f} pts | RSI={rsi:.1f} | Status: Ready")
 
             time.sleep(2)
