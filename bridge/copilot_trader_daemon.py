@@ -73,6 +73,19 @@ def get_recovery_progress(balance: float) -> dict:
     }
 
 
+# Optional Telegram Notification Integration via 02-bot/telegram
+tg_bot = None
+try:
+    bot_path = Path(__file__).resolve().parent.parent / "02-bot" / "telegram"
+    if bot_path.exists():
+        if str(bot_path) not in sys.path:
+            sys.path.insert(0, str(bot_path))
+        from telegram_bot import TelegramBot
+        tg_bot = TelegramBot()
+except Exception as _e:
+    tg_bot = None
+
+
 def log_trade_event(event_type: str, data: dict):
     payload = {
         "timestamp": datetime.now().isoformat(),
@@ -82,6 +95,24 @@ def log_trade_event(event_type: str, data: dict):
     with open(LEDGER_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(payload) + "\n")
     logger.info(f"LEDGER EVENT [{event_type}]: {data}")
+
+    # Dispatch to Telegram Bot if available
+    if tg_bot and tg_bot.is_configured:
+        try:
+            if event_type == "OPEN_POSITION":
+                msg = f"🚀 <b>AI CO-PILOT OPEN {data.get('type')}</b>\n" \
+                      f"Simbol: <code>{data.get('symbol')}</code> | Lot: <code>{data.get('lot')}</code>\n" \
+                      f"Entry: <code>{data.get('price')}</code> | SL: <code>{data.get('sl')}</code> | TP: <code>{data.get('tp')}</code>\n" \
+                      f"Alasan: {data.get('reason')}"
+                tg_bot.send_message(msg)
+            elif event_type == "CLOSE_POSITION":
+                msg = f"🏁 <b>AI CO-PILOT CLOSE POSITION</b>\n" \
+                      f"Tiket: <code>#{data.get('ticket')}</code>\n" \
+                      f"Exit Price: <code>{data.get('price')}</code>\n" \
+                      f"Alasan: {data.get('reason')}"
+                tg_bot.send_message(msg)
+        except Exception as _err:
+            logger.warning(f"Telegram dispatch failed: {_err}")
 
 
 def calculate_indicators(symbol: str):
