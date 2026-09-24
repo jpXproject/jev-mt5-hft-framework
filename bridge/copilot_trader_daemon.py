@@ -35,7 +35,8 @@ logger = logging.getLogger("JevCoPilot")
 # CONFIGURATION
 SYMBOL = "XAUUSDc"
 MAGIC_NUMBER = 20260925
-FIXED_LOT = 0.01  # L2 Small lot constraint
+FIXED_LOT = 0.01  # L2 Small lot constraint baseline
+TARGET_RECOVERY_BALANCE = 1000.0  # Milestone target 1000 USC
 MAX_OPEN_POSITIONS = 1
 MAX_SPREAD_POINTS = 350.0  # Max spread acceptable
 MIN_COOLDOWN_SEC = 25  # Minimum rest after position closed
@@ -43,6 +44,33 @@ STOP_TIME_HOUR = 3
 STOP_TIME_MINUTE = 55  # Stop trading at 03:55 AM WIB before 04:00 market rollover
 
 LEDGER_FILE = Path(__file__).parent / "copilot_ledger.jsonl"
+
+
+def get_dynamic_lot(balance: float) -> float:
+    """Tiered lot scaling according to 1000 USC recovery roadmap."""
+    if balance < 450.0:
+        return 0.01  # Stage 1: Foundation
+    elif balance < 600.0:
+        return 0.01  # Stage 2: Conservative
+    elif balance < 800.0:
+        return 0.02  # Stage 3: Momentum
+    elif balance < 1000.0:
+        return 0.02  # Stage 4: Target Run
+    else:
+        return 0.01  # Target Reached: Lockdown mode
+
+
+def get_recovery_progress(balance: float) -> dict:
+    pct = min(100.0, (balance / TARGET_RECOVERY_BALANCE) * 100.0)
+    delta_remaining = max(0.0, TARGET_RECOVERY_BALANCE - balance)
+    stage = 1 if balance < 450.0 else (2 if balance < 600.0 else (3 if balance < 800.0 else 4))
+    return {
+        "balance": balance,
+        "target": TARGET_RECOVERY_BALANCE,
+        "progress_pct": round(pct, 2),
+        "remaining_usc": round(delta_remaining, 2),
+        "stage": stage
+    }
 
 
 def log_trade_event(event_type: str, data: dict):
@@ -369,22 +397,28 @@ def run_copilot():
             # - RSI between 34 and 58 (Healthy downward momentum, not severely oversold)
             sell_signal = (ema9 < ema21) and (close < vwap) and (34.0 <= rsi <= 58.0)
 
+            # Dynamic Lot & Recovery Sizing
+            acc = mt5.account_info()
+            current_balance = acc.balance if acc else 321.38
+            rec_status = get_recovery_progress(current_balance)
+            current_lot = get_dynamic_lot(current_balance)
+
             if buy_signal:
                 reason = f"BullCross EMA9>21 | RSI={rsi:.1f} | DevVWAP=+{(close-vwap):.2f}"
-                logger.info(f"⚡ AI BUY SIGNAL TRIGGERED: {reason}")
-                res = execute_order("BUY", SYMBOL, FIXED_LOT, calc_sl_pts, calc_tp_pts, reason)
+                logger.info(f"⚡ AI BUY SIGNAL TRIGGERED: {reason} | Lot={current_lot} | Recovery={rec_status['progress_pct']}%")
+                res = execute_order("BUY", SYMBOL, current_lot, calc_sl_pts, calc_tp_pts, reason)
                 if res:
                     last_trade_time = time.time()
 
             elif sell_signal:
                 reason = f"BearCross EMA9<21 | RSI={rsi:.1f} | DevVWAP={(close-vwap):.2f}"
-                logger.info(f"⚡ AI SELL SIGNAL TRIGGERED: {reason}")
-                res = execute_order("SELL", SYMBOL, FIXED_LOT, calc_sl_pts, calc_tp_pts, reason)
+                logger.info(f"⚡ AI SELL SIGNAL TRIGGERED: {reason} | Lot={current_lot} | Recovery={rec_status['progress_pct']}%")
+                res = execute_order("SELL", SYMBOL, current_lot, calc_sl_pts, calc_tp_pts, reason)
                 if res:
                     last_trade_time = time.time()
 
             if loop_count % 20 == 0:
-                logger.info(f"[MONITOR] XAUUSDc={close:.3f} | Spread={spread_pts:.0f} pts | RSI={rsi:.1f} | EMA9/21 diff={(ema9-ema21):.2f} | Status: Ready")
+                logger.info(f"[MONITOR] XAUUSDc={close:.3f} | Bal={current_balance:.2f} USC (Prog: {rec_status['progress_pct']}%, Stage {rec_status['stage']}) | Spread={spread_pts:.0f} pts | RSI={rsi:.1f} | Status: Ready")
 
             time.sleep(2)
 
