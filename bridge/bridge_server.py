@@ -238,6 +238,16 @@ def mt5_live_poller():
                     rec_rem = max(0.0, rec_target - acc.balance)
                     rec_stage = 1 if acc.balance < 350.0 else (2 if acc.balance < 500.0 else (3 if acc.balance < 700.0 else (4 if acc.balance < 850.0 else 5)))
 
+                    # Calculate ATR and Suggested SL/TP
+                    atr = 0.50
+                    if rates is not None and len(rates) >= 14:
+                        tr_vals = [max(r['high'] - r['low'], abs(r['high'] - r['close'])) for r in rates[-14:]]
+                        atr = sum(tr_vals) / len(tr_vals) if tr_vals else 0.50
+
+                    sl_dist = max(atr * 2.2, 0.850)
+                    tp_dist = max(atr * 3.8, 1.500)
+                    is_bull = (mid >= vwap)
+
                     snap = {
                         "as_of": int(tick.time),
                         "symbol": symbol,
@@ -256,6 +266,21 @@ def mt5_live_poller():
                             "progress_pct": round(rec_pct, 2),
                             "remaining_usc": round(rec_rem, 2),
                             "stage": rec_stage
+                        },
+                        "suggestions": {
+                            "bias": "BUY" if is_bull else "SELL",
+                            "rr_ratio": "1:1.73",
+                            "atr": round(atr, 3),
+                            "buy": {
+                                "entry": round(tick.ask, 3),
+                                "sl": round(tick.ask - sl_dist, 3),
+                                "tp": round(tick.ask + tp_dist, 3)
+                            },
+                            "sell": {
+                                "entry": round(tick.bid, 3),
+                                "sl": round(tick.bid + sl_dist, 3),
+                                "tp": round(tick.bid - tp_dist, 3)
+                            }
                         }
                     }
 

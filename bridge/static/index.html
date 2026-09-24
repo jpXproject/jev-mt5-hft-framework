@@ -249,6 +249,22 @@
     </div>
   </div>
 
+  <!-- Suggested SL/TP Box (AI Execution Engine) -->
+  <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:10px; padding:12px 18px; margin-bottom:15px; box-shadow:0 4px 15px rgba(0,0,0,0.3); display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px;">
+    <div style="background:rgba(0,255,136,0.05); border:1px solid rgba(0,255,136,0.2); border-radius:8px; padding:10px;">
+      <div style="font-size:11px; font-weight:700; color:var(--accent-green); margin-bottom:4px;">🟢 SARAN POSISI BUY</div>
+      <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-main);" id="sugg-buy-val">Memuat kalkulasi SL/TP...</div>
+    </div>
+    <div style="background:rgba(255,75,75,0.05); border:1px solid rgba(255,75,75,0.2); border-radius:8px; padding:10px;">
+      <div style="font-size:11px; font-weight:700; color:var(--accent-red); margin-bottom:4px;">🔴 SARAN POSISI SELL</div>
+      <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-main);" id="sugg-sell-val">Memuat kalkulasi SL/TP...</div>
+    </div>
+    <div style="background:rgba(0,240,255,0.05); border:1px solid rgba(0,240,255,0.2); border-radius:8px; padding:10px;">
+      <div style="font-size:11px; font-weight:700; color:var(--accent-cyan); margin-bottom:4px;">🎯 BIAS PASAR & RASIO R:R</div>
+      <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-main);" id="sugg-bias-val">Menghitung...</div>
+    </div>
+  </div>
+
   <div class="grid-metrics">
     <div class="card">
       <div class="card-title">Live Chart Symbol & Mid Price</div>
@@ -587,6 +603,23 @@
                 5: 'STAGE 5: Target Final Run (Lot 0.03)'
               };
               if(stageEl) stageEl.innerText = stageNames[rec.stage] || `STAGE ${rec.stage}`;
+            }
+
+            if(snap.suggestions) {
+              const sugg = snap.suggestions;
+              const buyEl = document.getElementById('sugg-buy-val');
+              const sellEl = document.getElementById('sugg-sell-val');
+              const biasEl = document.getElementById('sugg-bias-val');
+              if(buyEl && sugg.buy) {
+                buyEl.innerText = `Entry: ${sugg.buy.entry.toFixed(3)} | SL: ${sugg.buy.sl.toFixed(3)} | TP: ${sugg.buy.tp.toFixed(3)}`;
+              }
+              if(sellEl && sugg.sell) {
+                sellEl.innerText = `Entry: ${sugg.sell.entry.toFixed(3)} | SL: ${sugg.sell.sl.toFixed(3)} | TP: ${sugg.sell.tp.toFixed(3)}`;
+              }
+              if(biasEl) {
+                biasEl.innerText = `Bias: ${sugg.bias} | R:R ${sugg.rr_ratio} | ATR: ${sugg.atr.toFixed(3)}`;
+                biasEl.style.color = sugg.bias === 'BUY' ? 'var(--accent-green)' : 'var(--accent-red)';
+              }
             }
           }
 
