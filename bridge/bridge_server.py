@@ -88,6 +88,31 @@ def get_telemetry():
     telemetry_state["tick_history"] = tick_history[-50:]
     return telemetry_state
 
+@app.post("/evaluate")
+async def evaluate(snapshot: MarketSnapshot):
+    snap_dict = snapshot.model_dump()
+    start_t = time.time()
+    battery = evaluate_market_state(snap_dict)
+    action = compose_action(battery, snap_dict)
+    latency_ms = (time.time() - start_t) * 1000.0
+
+    telemetry_state["snapshot"] = snap_dict
+    telemetry_state["battery"] = battery
+    telemetry_state["action"] = action
+    telemetry_state["latency_ms"] = round(latency_ms, 2)
+    telemetry_state["timestamp"] = time.time()
+
+    return {
+        "status": "success",
+        "symbol": snapshot.symbol,
+        "latency_ms": round(latency_ms, 2),
+        "battery": battery,
+        "action": action,
+        "direction": battery.get("direction", "neutral").upper(),
+        "regime": battery.get("regime", "chaotic"),
+        "confidence": battery.get("confidence", 0.50)
+    }
+
 @app.post("/api/panic_flatten")
 def panic_flatten():
     """Emergency close all positions via MT5 API"""
