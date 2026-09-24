@@ -83,16 +83,52 @@ void OnDeinit(const int reason)
 }
 
 //+------------------------------------------------------------------+
-//| Local WebRequest Call to Python / Gemini Bridge                  |
+//| MT5 Common Files IPC Fallback                                    |
+//+------------------------------------------------------------------+
+bool QueryBridgeFile(const string payload, string &response, int &latency_ms)
+{
+   uint start_tick = GetTickCount();
+   int h_write = FileOpen("jev_snapshot.json", FILE_WRITE|FILE_TXT|FILE_COMMON|FILE_SHARE_READ|FILE_SHARE_WRITE, 0, CP_UTF8);
+   if(h_write == INVALID_HANDLE) return false;
+   FileWriteString(h_write, payload);
+   FileClose(h_write);
+
+   for(int i = 0; i < 20; i++)
+   {
+      Sleep(15);
+      if(FileIsExist("jev_response.json", FILE_COMMON))
+      {
+         int h_read = FileOpen("jev_response.json", FILE_READ|FILE_TXT|FILE_COMMON|FILE_SHARE_READ|FILE_SHARE_WRITE, 0, CP_UTF8);
+         if(h_read != INVALID_HANDLE)
+         {
+            response = "";
+            while(!FileIsEnding(h_read))
+               response += FileReadString(h_read);
+            FileClose(h_read);
+            if(StringLen(response) > 5)
+            {
+               latency_ms = (int)(GetTickCount() - start_tick);
+               return true;
+            }
+         }
+      }
+   }
+   return false;
+}
+
+//+------------------------------------------------------------------+
+//| Dual Transport Query to Python / Gemini Bridge                   |
 //+------------------------------------------------------------------+
 bool QueryBridge(const string payload, string &response, int &latency_ms)
 {
    char post_data[];
    char result_data[];
    string result_headers;
-   StringToCharArray(payload, post_data, 0, WHOLE_ARRAY, CP_UTF8);
+   int len = StringLen(payload);
+   StringToCharArray(payload, post_data, 0, len, CP_UTF8);
 
    uint start_tick = GetTickCount();
+   ResetLastError();
    int res = WebRequest("POST", InpBridgeUrl, "Content-Type: application/json\r\n", 500, post_data, result_data, result_headers);
    latency_ms = (int)(GetTickCount() - start_tick);
 
@@ -101,7 +137,9 @@ bool QueryBridge(const string payload, string &response, int &latency_ms)
       response = CharArrayToString(result_data, 0, WHOLE_ARRAY, CP_UTF8);
       return true;
    }
-   return false;
+
+   // Fast fallback to Common Files IPC
+   return QueryBridgeFile(payload, response, latency_ms);
 }
 
 //+------------------------------------------------------------------+
