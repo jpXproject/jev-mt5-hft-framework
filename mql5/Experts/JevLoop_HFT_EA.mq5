@@ -18,15 +18,15 @@
 input group "=== Execution & Lot Settings ==="
 input ulong    InpMagicNumber       = 20260924;      // Magic Number
 input double   InpBaseLot           = 0.01;          // Base Lot Size (L2 Small Lot)
-input int      InpStopLossPts       = 200;           // Stop Loss in Points
-input int      InpTakeProfitPts     = 400;           // Take Profit in Points
+input int      InpStopLossPts       = 800;           // Stop Loss in Points (80 pips)
+input int      InpTakeProfitPts     = 1500;          // Take Profit in Points (150 pips)
 input int      InpSlippagePts       = 30;            // Max Allowed Slippage
 
 input group "=== 9 Hard Risk Veto Limits ==="
 input double   InpMaxDrawdownPct    = 3.0;           // Max Floating Drawdown %
 input double   InpMaxDailyLossUSD   = 50.0;          // Max Daily Loss USD
 input double   InpMaxLotCap         = 0.10;          // Absolute Max Lot Cap
-input double   InpMaxSpreadPts      = 50.0;          // Max Allowed Spread (pts)
+input double   InpMaxSpreadPts      = 350.0;         // Max Allowed Spread (pts)
 input double   InpMinMarginLevel    = 200.0;         // Min Margin Level %
 input int      InpMaxLatencyMs      = 800;           // Max Response Deadline (ms)
 
@@ -282,7 +282,7 @@ void OnTick()
 
    if(g_ai_direction == "UP" && g_ai_confidence >= 0.70)
    {
-      double sl = NormalizeDouble(ask - (InpStopLossPts * point), _Digits);
+      double sl = NormalizeDouble(bid - (InpStopLossPts * point), _Digits);
       double tp = NormalizeDouble(ask + (InpTakeProfitPts * point), _Digits);
 
       ENUM_VETO_REASON veto = g_risk.EvaluateOrderVeto(_Symbol, ORDER_TYPE_BUY, order_lot, sl, g_last_latency);
@@ -294,7 +294,7 @@ void OnTick()
    }
    else if(g_ai_direction == "DOWN" && g_ai_confidence >= 0.70)
    {
-      double sl = NormalizeDouble(bid + (InpStopLossPts * point), _Digits);
+      double sl = NormalizeDouble(ask + (InpStopLossPts * point), _Digits);
       double tp = NormalizeDouble(bid - (InpTakeProfitPts * point), _Digits);
 
       ENUM_VETO_REASON veto = g_risk.EvaluateOrderVeto(_Symbol, ORDER_TYPE_SELL, order_lot, sl, g_last_latency);
