@@ -148,27 +148,27 @@
       <span class="badge badge-run" id="ladder-badge">RUN (OPTIMAL)</span>
     </div>
     <div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text-muted);">
-      <span id="bridge-status"><span class="status-dot dot-ok"></span>BRIDGE ONLINE</span> |
-      Latency: <span id="latency-val" style="color: var(--accent-cyan); font-weight:600;">240 ms</span>
+      <span id="bridge-status"><span class="status-dot dot-ok"></span>MT5 SYNC ONLINE</span> |
+      Latency: <span id="latency-val" style="color: var(--accent-cyan); font-weight:600;">0.8 ms</span>
     </div>
   </header>
 
   <div class="grid-metrics">
     <div class="card">
-      <div class="card-title">Symbol & Mid Price</div>
-      <div class="card-value" id="mid-price">BTCUSD 85,820.50</div>
+      <div class="card-title">Live Chart Symbol & Mid Price</div>
+      <div class="card-value" id="mid-price">Connecting to MT5...</div>
     </div>
     <div class="card">
       <div class="card-title">Avellaneda-Stoikov Reservation</div>
-      <div class="card-value" id="reserv-price" style="color: var(--accent-cyan);">85,818.10</div>
+      <div class="card-value" id="reserv-price" style="color: var(--accent-cyan);">--</div>
     </div>
     <div class="card">
       <div class="card-title">Session VWAP / Spread</div>
-      <div class="card-value" id="vwap-spread">85,810.00 / 3.2 bps</div>
+      <div class="card-value" id="vwap-spread">--</div>
     </div>
     <div class="card">
-      <div class="card-title">Inventory / Floating DD</div>
-      <div class="card-value" id="inv-dd" style="color: var(--accent-green);">+0.02 Lot (0.4%)</div>
+      <div class="card-title">Net Lots / Floating Drawdown</div>
+      <div class="card-value" id="inv-dd" style="color: var(--accent-green);">--</div>
     </div>
   </div>
 
@@ -176,37 +176,37 @@
     <!-- Left Column: 7 Battery Judgments -->
     <div class="card">
       <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span class="card-title" style="margin:0;">🧠 7-Question Battery (Gemini Flash Decision)</span>
-        <span id="ai-conf" style="font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--accent-green);">CONFIDENCE: 86%</span>
+        <span class="card-title" style="margin:0;">🧠 7-Question Battery (Gemini Decision Engine)</span>
+        <span id="ai-conf" style="font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--accent-green);">CONFIDENCE: --</span>
       </div>
       <div class="battery-grid">
         <div class="battery-item">
           <div class="battery-label">1. Market Regime</div>
-          <div class="battery-val" id="bat-regime" style="color: var(--accent-cyan);">mean_reverting</div>
+          <div class="battery-val" id="bat-regime" style="color: var(--accent-cyan);">--</div>
         </div>
         <div class="battery-item">
           <div class="battery-label">2. Directional Bias</div>
-          <div class="battery-val" id="bat-direction" style="color: var(--accent-green);">UP (MOMENTUM)</div>
+          <div class="battery-val" id="bat-direction" style="color: var(--accent-green);">--</div>
         </div>
         <div class="battery-item">
           <div class="battery-label">3. Flow Toxicity</div>
-          <div class="battery-val" id="bat-toxic">low</div>
+          <div class="battery-val" id="bat-toxic">--</div>
         </div>
         <div class="battery-item">
           <div class="battery-label">4. Liquidity Stress</div>
-          <div class="battery-val" id="bat-stress">normal</div>
+          <div class="battery-val" id="bat-stress">--</div>
         </div>
         <div class="battery-item">
           <div class="battery-label">5. Quote Environment</div>
-          <div class="battery-val" id="bat-quote">favorable</div>
+          <div class="battery-val" id="bat-quote">--</div>
         </div>
         <div class="battery-item">
           <div class="battery-label">6. Inventory Pressure</div>
-          <div class="battery-val" id="bat-inv">balanced</div>
+          <div class="battery-val" id="bat-inv">--</div>
         </div>
       </div>
       <div style="margin-top:14px; padding:10px; background:rgba(0,240,255,0.05); border:1px solid rgba(0,240,255,0.2); border-radius:6px; font-size:12px; font-family:'JetBrains Mono',monospace;">
-        Action Composer Decision: <b id="policy-action" style="color:var(--accent-green);">BUY (Scale: 1.0)</b> — Regime mean_reverting with positive micro-imbalance
+        Action Composer Decision: <b id="policy-action" style="color:var(--accent-green);">--</b>
       </div>
     </div>
 
@@ -214,53 +214,77 @@
     <div class="card">
       <div class="card-title">🛡️ 9 Hard Risk Veto Gates</div>
       <div class="risk-list">
-        <div class="risk-item"><span><span class="status-dot dot-ok"></span>Max Drawdown (<3%)</span><span>PASS</span></div>
-        <div class="risk-item"><span><span class="status-dot dot-ok"></span>Daily Loss (<$50)</span><span>PASS</span></div>
-        <div class="risk-item"><span><span class="status-dot dot-ok"></span>Tick Deadline (<800ms)</span><span>PASS</span></div>
-        <div class="risk-item"><span><span class="status-dot dot-ok"></span>Spread Filter (<50pts)</span><span>PASS</span></div>
-        <div class="risk-item"><span><span class="status-dot dot-ok"></span>Margin Level (>200%)</span><span>PASS</span></div>
-        <div class="risk-item"><span><span class="status-dot dot-ok"></span>Lot Cap (<=0.10)</span><span>PASS</span></div>
+        <div class="risk-item"><span><span class="status-dot dot-ok"></span>Max Drawdown (&lt;3%)</span><span>PASS</span></div>
+        <div class="risk-item"><span><span class="status-dot dot-ok"></span>Daily Loss (&lt;$50)</span><span>PASS</span></div>
+        <div class="risk-item"><span><span class="status-dot dot-ok"></span>Tick Deadline (&lt;800ms)</span><span>PASS</span></div>
+        <div class="risk-item"><span><span class="status-dot dot-ok"></span>Spread Filter (&lt;50pts)</span><span>PASS</span></div>
+        <div class="risk-item"><span><span class="status-dot dot-ok"></span>Margin Level (&gt;200%)</span><span>PASS</span></div>
+        <div class="risk-item"><span><span class="status-dot dot-ok"></span>Lot Cap (&le;0.10)</span><span>PASS</span></div>
       </div>
     </div>
   </div>
 
   <div class="log-box" id="log-box">
-    <div class="log-entry"><span class="time">[10:07:55]</span> <span class="hl">SENTINEL_INIT:</span> Jev-MT5 Bridge listening on 127.0.0.1:8765</div>
-    <div class="log-entry"><span class="time">[10:07:56]</span> <span class="hl">MT5_TELEMETRY:</span> Connected to terminal64.exe | Symbol: BTCUSD</div>
-    <div class="log-entry"><span class="time">[10:07:58]</span> <span class="hl">BATTERY_CYCLE:</span> Latency 218ms | Regime: mean_reverting | Bias: UP | Veto: NONE</div>
+    <div class="log-entry"><span class="time">[INIT]</span> <span class="hl">SENTINEL_INIT:</span> Syncing live MT5 terminal quotes...</div>
   </div>
 
   <script>
-    // Realtime polling
+    let lastLogMid = 0;
+
     async function updateDashboard() {
       try {
         const res = await fetch('/api/telemetry');
         if(res.ok) {
           const data = await res.json();
           if(data.snapshot) {
-            document.getElementById('mid-price').innerText = `${data.snapshot.symbol} ${data.snapshot.mid.toFixed(2)}`;
-            document.getElementById('vwap-spread').innerText = `${data.snapshot.vwap.toFixed(2)} / ${data.snapshot.spread_bps.toFixed(1)} bps`;
-            document.getElementById('inv-dd').innerText = `${data.snapshot.net_lot >= 0 ? '+' : ''}${data.snapshot.net_lot.toFixed(2)} Lot (${data.snapshot.drawdown_pct.toFixed(2)}%)`;
+            const snap = data.snapshot;
+            document.getElementById('mid-price').innerText = `${snap.symbol} ${snap.mid.toFixed(3)}`;
+            document.getElementById('reserv-price').innerText = snap.reservation_price ? snap.reservation_price.toFixed(3) : snap.mid.toFixed(3);
+            document.getElementById('vwap-spread').innerText = `${snap.vwap.toFixed(3)} / ${snap.spread_bps.toFixed(2)} bps`;
+            
+            const netSign = snap.net_lot >= 0 ? '+' : '';
+            document.getElementById('inv-dd').innerText = `${netSign}${snap.net_lot.toFixed(2)} Lot (${snap.drawdown_pct.toFixed(2)}%)`;
+
+            // Append live log if price changed
+            if(Math.abs(snap.mid - lastLogMid) > 0.05) {
+              lastLogMid = snap.mid;
+              const now = new Date().toTimeString().split(' ')[0];
+              const logBox = document.getElementById('log-box');
+              const entry = document.createElement('div');
+              entry.className = 'log-entry';
+              entry.innerHTML = `<span class="time">[${now}]</span> <span class="hl">MT5_TICK:</span> ${snap.symbol} Mid=${snap.mid.toFixed(3)} | Spread=${snap.spread_bps.toFixed(2)}bps | VWAP=${snap.vwap.toFixed(3)}`;
+              logBox.prepend(entry);
+              if(logBox.childNodes.length > 30) logBox.removeChild(logBox.lastChild);
+            }
           }
+
           if(data.battery) {
-            document.getElementById('bat-regime').innerText = data.battery.regime;
-            document.getElementById('bat-direction').innerText = data.battery.direction.toUpperCase();
-            document.getElementById('bat-toxic').innerText = data.battery.toxic_flow;
-            document.getElementById('bat-stress').innerText = data.battery.liquidity_stress;
-            document.getElementById('bat-quote').innerText = data.battery.quote_environment;
-            document.getElementById('bat-inv').innerText = data.battery.inventory_pressure;
-            document.getElementById('ai-conf').innerText = `CONFIDENCE: ${(data.battery.confidence * 100).toFixed(0)}%`;
+            const bat = data.battery;
+            document.getElementById('bat-regime').innerText = bat.regime;
+            document.getElementById('bat-direction').innerText = bat.direction.toUpperCase();
+            document.getElementById('bat-toxic').innerText = bat.toxic_flow;
+            document.getElementById('bat-stress').innerText = bat.liquidity_stress;
+            document.getElementById('bat-quote').innerText = bat.quote_environment;
+            document.getElementById('bat-inv').innerText = bat.inventory_pressure;
+            document.getElementById('ai-conf').innerText = `CONFIDENCE: ${(bat.confidence * 100).toFixed(0)}%`;
           }
-          if(data.latency_ms) {
-            document.getElementById('latency-val').innerText = `${data.latency_ms.toFixed(0)} ms`;
+
+          if(data.latency_ms !== undefined) {
+            document.getElementById('latency-val').innerText = `${data.latency_ms.toFixed(1)} ms`;
           }
+
           if(data.action) {
-            document.getElementById('policy-action').innerText = `${data.action.action} (Scale: ${data.action.lot_scale})`;
+            document.getElementById('policy-action').innerText = `${data.action.action} (Scale: ${data.action.lot_scale}) — ${data.action.reason || ''}`;
           }
         }
-      } catch(e) {}
+      } catch(e) {
+        console.error("Dashboard poll error:", e);
+      }
     }
-    setInterval(updateDashboard, 2000);
+
+    // Immediate first call then poll every 1s
+    updateDashboard();
+    setInterval(updateDashboard, 1000);
   </script>
 </body>
 </html>
