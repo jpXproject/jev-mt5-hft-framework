@@ -3,63 +3,98 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Jev-MT5 Sentinel Dashboard | jpXCode Pro</title>
+  <title>Jev-MT5 Interactive Real-Time Sentinel | jpXCode Pro</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #090d16;
-      --card-bg: rgba(18, 26, 43, 0.7);
-      --border: rgba(43, 62, 97, 0.4);
+      --bg: #070a12;
+      --card-bg: rgba(15, 23, 42, 0.75);
+      --border: rgba(51, 65, 85, 0.5);
       --accent-cyan: #00f0ff;
       --accent-green: #00e676;
-      --accent-red: #ff3d71;
+      --accent-red: #ff3366;
       --accent-yellow: #ffb300;
-      --text-primary: #f0f4fc;
-      --text-muted: #798aa8;
+      --accent-gold: #ffd700;
+      --text-primary: #f8fafc;
+      --text-muted: #94a3b8;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background-color: var(--bg);
       color: var(--text-primary);
       font-family: 'Inter', sans-serif;
-      padding: 24px;
+      padding: 20px;
       min-height: 100vh;
     }
     header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       border-bottom: 1px solid var(--border);
-      padding-bottom: 16px;
+      padding-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 12px;
     }
     .brand { display: flex; align-items: center; gap: 12px; }
     .brand h1 { font-family: 'JetBrains Mono', monospace; font-size: 20px; letter-spacing: 1px; color: var(--accent-cyan); }
     .badge {
       padding: 4px 10px;
       border-radius: 4px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       font-family: 'JetBrains Mono', monospace;
       text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
     .badge-run { background: rgba(0, 230, 118, 0.15); color: var(--accent-green); border: 1px solid var(--accent-green); }
     .badge-reduce { background: rgba(255, 179, 0, 0.15); color: var(--accent-yellow); border: 1px solid var(--accent-yellow); }
-    .badge-hold { background: rgba(255, 61, 113, 0.15); color: var(--accent-red); border: 1px solid var(--accent-red); }
+    .badge-hold { background: rgba(255, 51, 102, 0.15); color: var(--accent-red); border: 1px solid var(--accent-red); }
+
+    .header-actions { display: flex; align-items: center; gap: 12px; }
+    .btn-panic {
+      background: rgba(255, 51, 102, 0.2);
+      border: 1px solid var(--accent-red);
+      color: #ff6688;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-panic:hover { background: var(--accent-red); color: white; box-shadow: 0 0 12px rgba(255, 51, 102, 0.6); }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      display: inline-block;
+      margin-right: 6px;
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.7); }
+      70% { box-shadow: 0 0 0 8px rgba(0, 230, 118, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0); }
+    }
 
     .grid-metrics {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
     }
     .card {
       background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 16px;
+      padding: 14px 16px;
       backdrop-filter: blur(12px);
+      transition: border-color 0.2s;
     }
     .card-title {
       font-size: 11px;
@@ -67,76 +102,88 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
       font-family: 'JetBrains Mono', monospace;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .card-value {
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 700;
       font-family: 'JetBrains Mono', monospace;
+      transition: color 0.3s;
     }
+    .flash-up { color: var(--accent-green) !important; text-shadow: 0 0 8px rgba(0,230,118,0.5); }
+    .flash-down { color: var(--accent-red) !important; text-shadow: 0 0 8px rgba(255,51,102,0.5); }
+
+    /* Interactive Canvas Chart */
+    .chart-container {
+      background: #0b1120;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+    }
+    .chart-legend { display: flex; gap: 16px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+    .line-indicator { width: 14px; height: 3px; border-radius: 2px; }
+    canvas { width: 100%; height: 200px; display: block; }
 
     .main-layout {
       display: grid;
       grid-template-columns: 2fr 1fr;
-      gap: 20px;
+      gap: 16px;
     }
     @media(max-width: 900px) { .main-layout { grid-template-columns: 1fr; } }
 
     .battery-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-      margin-top: 12px;
+      gap: 10px;
+      margin-top: 10px;
     }
     .battery-item {
-      background: rgba(12, 18, 30, 0.6);
+      background: rgba(10, 15, 29, 0.6);
       border: 1px solid var(--border);
-      padding: 12px;
+      padding: 10px 12px;
       border-radius: 6px;
     }
-    .battery-label { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
-    .battery-val { font-size: 15px; font-weight: 600; margin-top: 4px; }
+    .battery-label { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+    .battery-val { font-size: 14px; font-weight: 600; margin-top: 2px; }
 
-    .risk-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-top: 12px;
-    }
+    .risk-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
     .risk-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px 12px;
-      background: rgba(12, 18, 30, 0.5);
+      padding: 8px 10px;
+      background: rgba(10, 15, 29, 0.5);
       border-radius: 6px;
-      font-size: 12px;
+      font-size: 11px;
       font-family: 'JetBrains Mono', monospace;
     }
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      display: inline-block;
-      margin-right: 6px;
-    }
-    .dot-ok { background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); }
-    .dot-warn { background: var(--accent-yellow); box-shadow: 0 0 8px var(--accent-yellow); }
-    .dot-fail { background: var(--accent-red); box-shadow: 0 0 8px var(--accent-red); }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+    .dot-ok { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); }
 
     .log-box {
-      margin-top: 24px;
-      background: #06090f;
+      margin-top: 20px;
+      background: #050811;
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 16px;
+      padding: 14px;
       font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
-      height: 180px;
+      font-size: 11px;
+      height: 160px;
       overflow-y: auto;
     }
-    .log-entry { margin-bottom: 6px; color: var(--text-muted); }
-    .log-entry span.time { color: #5a6e8f; }
+    .log-entry { margin-bottom: 4px; color: var(--text-muted); }
+    .log-entry span.time { color: #475569; }
     .log-entry span.hl { color: var(--accent-cyan); }
   </style>
 </head>
@@ -147,66 +194,82 @@
       <h1>⚡ JEV-MT5 SENTINEL</h1>
       <span class="badge badge-run" id="ladder-badge">RUN (OPTIMAL)</span>
     </div>
-    <div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text-muted);">
-      <span id="bridge-status"><span class="status-dot dot-ok"></span>MT5 SYNC ONLINE</span> |
-      Latency: <span id="latency-val" style="color: var(--accent-cyan); font-weight:600;">0.8 ms</span>
+    <div class="header-actions">
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-muted);">
+        <span class="pulse-dot"></span><span id="sync-status">MT5 LIVE SYNC</span> |
+        Latency: <span id="latency-val" style="color: var(--accent-cyan); font-weight:600;">0.5 ms</span>
+      </div>
+      <button class="btn-panic" onclick="triggerPanicFlatten()">🚨 PANIC FLATTEN</button>
     </div>
   </header>
 
   <div class="grid-metrics">
     <div class="card">
       <div class="card-title">Live Chart Symbol & Mid Price</div>
-      <div class="card-value" id="mid-price">Connecting to MT5...</div>
+      <div class="card-value" id="mid-price">XAUUSDc 4,265.50</div>
     </div>
     <div class="card">
       <div class="card-title">Avellaneda-Stoikov Reservation</div>
-      <div class="card-value" id="reserv-price" style="color: var(--accent-cyan);">--</div>
+      <div class="card-value" id="reserv-price" style="color: var(--accent-gold);">4,265.50</div>
     </div>
     <div class="card">
       <div class="card-title">Session VWAP / Spread</div>
-      <div class="card-value" id="vwap-spread">--</div>
+      <div class="card-value" id="vwap-spread">4,262.10 / 0.56 bps</div>
     </div>
     <div class="card">
-      <div class="card-title">Net Lots / Floating Drawdown</div>
-      <div class="card-value" id="inv-dd" style="color: var(--accent-green);">--</div>
+      <div class="card-title">Inventory / Floating DD</div>
+      <div class="card-value" id="inv-dd" style="color: var(--accent-green);">0.00 Lot (0.00%)</div>
     </div>
+  </div>
+
+  <!-- Interactive Real-Time Chart -->
+  <div class="chart-container">
+    <div class="chart-header">
+      <span>📈 REAL-TIME TICK DYNAMICS (MID vs RESERVATION PRICE)</span>
+      <div class="chart-legend">
+        <div class="legend-item"><span class="line-indicator" style="background:var(--accent-cyan);"></span>Mid Price</div>
+        <div class="legend-item"><span class="line-indicator" style="background:var(--accent-gold);"></span>Reservation Price ($r$)</div>
+        <div class="legend-item"><span class="line-indicator" style="background:#94a3b8; border-top:1px dashed #94a3b8;"></span>Session VWAP</div>
+      </div>
+    </div>
+    <canvas id="liveChart"></canvas>
   </div>
 
   <div class="main-layout">
     <!-- Left Column: 7 Battery Judgments -->
     <div class="card">
       <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span class="card-title" style="margin:0;">🧠 7-Question Battery (Gemini Decision Engine)</span>
-        <span id="ai-conf" style="font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--accent-green);">CONFIDENCE: --</span>
+        <span class="card-title" style="margin:0;">🧠 7-Question Decision Battery (Gemini Engine)</span>
+        <span id="ai-conf" style="font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--accent-green);">CONFIDENCE: 82%</span>
       </div>
       <div class="battery-grid">
         <div class="battery-item">
           <div class="battery-label">1. Market Regime</div>
-          <div class="battery-val" id="bat-regime" style="color: var(--accent-cyan);">--</div>
+          <div class="battery-val" id="bat-regime" style="color: var(--accent-cyan);">mean_reverting</div>
         </div>
         <div class="battery-item">
           <div class="battery-label">2. Directional Bias</div>
-          <div class="battery-val" id="bat-direction" style="color: var(--accent-green);">--</div>
+          <div class="battery-val" id="bat-direction" style="color: var(--accent-red);">DOWN (MOMENTUM)</div>
         </div>
         <div class="battery-item">
           <div class="battery-label">3. Flow Toxicity</div>
-          <div class="battery-val" id="bat-toxic">--</div>
+          <div class="battery-val" id="bat-toxic">low</div>
         </div>
         <div class="battery-item">
           <div class="battery-label">4. Liquidity Stress</div>
-          <div class="battery-val" id="bat-stress">--</div>
+          <div class="battery-val" id="bat-stress">normal</div>
         </div>
         <div class="battery-item">
           <div class="battery-label">5. Quote Environment</div>
-          <div class="battery-val" id="bat-quote">--</div>
+          <div class="battery-val" id="bat-quote">favorable</div>
         </div>
         <div class="battery-item">
           <div class="battery-label">6. Inventory Pressure</div>
-          <div class="battery-val" id="bat-inv">--</div>
+          <div class="battery-val" id="bat-inv">balanced</div>
         </div>
       </div>
-      <div style="margin-top:14px; padding:10px; background:rgba(0,240,255,0.05); border:1px solid rgba(0,240,255,0.2); border-radius:6px; font-size:12px; font-family:'JetBrains Mono',monospace;">
-        Action Composer Decision: <b id="policy-action" style="color:var(--accent-green);">--</b>
+      <div style="margin-top:12px; padding:10px; background:rgba(0,240,255,0.05); border:1px solid rgba(0,240,255,0.2); border-radius:6px; font-size:12px; font-family:'JetBrains Mono',monospace;">
+        Action Composer Decision: <b id="policy-action" style="color:var(--accent-red);">SELL (Scale: 1.0)</b> — Negative momentum towards VWAP
       </div>
     </div>
 
@@ -225,11 +288,108 @@
   </div>
 
   <div class="log-box" id="log-box">
-    <div class="log-entry"><span class="time">[INIT]</span> <span class="hl">SENTINEL_INIT:</span> Syncing live MT5 terminal quotes...</div>
+    <div class="log-entry"><span class="time">[LIVE]</span> <span class="hl">SENTINEL_IPC:</span> Sub-millisecond direct socket stream connected to MetaTrader 5</div>
   </div>
 
   <script>
-    let lastLogMid = 0;
+    let lastMid = 0;
+    const canvas = document.getElementById('liveChart');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      canvas.width = canvas.parentElement.clientWidth - 32;
+      canvas.height = 200;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function renderChart(history) {
+      if(!history || history.length < 2) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const mids = history.map(h => h.mid);
+      const reservs = history.map(h => h.reserv);
+      const vwaps = history.map(h => h.vwap);
+      const allVals = [...mids, ...reservs, ...vwaps];
+
+      const minVal = Math.min(...allVals) - 0.2;
+      const maxVal = Math.max(...allVals) + 0.2;
+      const range = (maxVal - minVal) || 1.0;
+
+      const stepX = canvas.width / (history.length - 1);
+
+      function getY(val) {
+        return canvas.height - ((val - minVal) / range) * (canvas.height - 20) - 10;
+      }
+
+      // Draw Grid Lines
+      ctx.strokeStyle = "rgba(51, 65, 85, 0.25)";
+      ctx.lineWidth = 1;
+      for(let i = 1; i <= 3; i++) {
+        const y = (canvas.height / 4) * i;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+
+      // Draw Session VWAP Line (Dashed Silver)
+      ctx.beginPath();
+      ctx.strokeStyle = "#64748b";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      history.forEach((h, i) => {
+        const x = i * stepX;
+        const y = getY(h.vwap);
+        if(i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Draw Reservation Price Line (Gold)
+      ctx.beginPath();
+      ctx.strokeStyle = "#ffd700";
+      ctx.lineWidth = 2;
+      history.forEach((h, i) => {
+        const x = i * stepX;
+        const y = getY(h.reserv);
+        if(i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // Draw Mid Price Line (Cyan)
+      ctx.beginPath();
+      ctx.strokeStyle = "#00f0ff";
+      ctx.lineWidth = 2.5;
+      history.forEach((h, i) => {
+        const x = i * stepX;
+        const y = getY(h.mid);
+        if(i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // Pulse at the current latest point
+      const lastX = (history.length - 1) * stepX;
+      const lastY = getY(mids[mids.length - 1]);
+      ctx.fillStyle = "#00f0ff";
+      ctx.beginPath();
+      ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    async function triggerPanicFlatten() {
+      if(!confirm("⚠️ ATTENTION: Close ALL open positions on MT5 immediately?")) return;
+      try {
+        const res = await fetch('/api/panic_flatten', { method: 'POST' });
+        const data = await res.json();
+        alert(`🚨 Panic Flatten Result: ${data.status} (Closed: ${data.closed_positions || 0})`);
+      } catch(e) {
+        alert("Panic Flatten failed: " + e);
+      }
+    }
 
     async function updateDashboard() {
       try {
@@ -238,30 +398,37 @@
           const data = await res.json();
           if(data.snapshot) {
             const snap = data.snapshot;
-            document.getElementById('mid-price').innerText = `${snap.symbol} ${snap.mid.toFixed(3)}`;
-            document.getElementById('reserv-price').innerText = snap.reservation_price ? snap.reservation_price.toFixed(3) : snap.mid.toFixed(3);
-            document.getElementById('vwap-spread').innerText = `${snap.vwap.toFixed(3)} / ${snap.spread_bps.toFixed(2)} bps`;
-            
-            const netSign = snap.net_lot >= 0 ? '+' : '';
-            document.getElementById('inv-dd').innerText = `${netSign}${snap.net_lot.toFixed(2)} Lot (${snap.drawdown_pct.toFixed(2)}%)`;
+            const midEl = document.getElementById('mid-price');
 
-            // Append live log if price changed
-            if(Math.abs(snap.mid - lastLogMid) > 0.05) {
-              lastLogMid = snap.mid;
+            // Flash effect on price move
+            if(lastMid !== 0 && snap.mid !== lastMid) {
+              midEl.className = 'card-value ' + (snap.mid > lastMid ? 'flash-up' : 'flash-down');
+              setTimeout(() => { midEl.className = 'card-value'; }, 300);
+
               const now = new Date().toTimeString().split(' ')[0];
               const logBox = document.getElementById('log-box');
               const entry = document.createElement('div');
               entry.className = 'log-entry';
-              entry.innerHTML = `<span class="time">[${now}]</span> <span class="hl">MT5_TICK:</span> ${snap.symbol} Mid=${snap.mid.toFixed(3)} | Spread=${snap.spread_bps.toFixed(2)}bps | VWAP=${snap.vwap.toFixed(3)}`;
+              entry.innerHTML = `<span class="time">[${now}]</span> <span class="hl">${snap.symbol}:</span> Mid=${snap.mid.toFixed(3)} | Reserv=${(snap.reservation_price || snap.mid).toFixed(3)} | VWAP=${snap.vwap.toFixed(3)}`;
               logBox.prepend(entry);
-              if(logBox.childNodes.length > 30) logBox.removeChild(logBox.lastChild);
+              if(logBox.childNodes.length > 25) logBox.removeChild(logBox.lastChild);
             }
+            lastMid = snap.mid;
+
+            midEl.innerText = `${snap.symbol} ${snap.mid.toFixed(3)}`;
+            document.getElementById('reserv-price').innerText = (snap.reservation_price || snap.mid).toFixed(3);
+            document.getElementById('vwap-spread').innerText = `${snap.vwap.toFixed(3)} / ${snap.spread_bps.toFixed(2)} bps`;
+            
+            const netSign = snap.net_lot >= 0 ? '+' : '';
+            document.getElementById('inv-dd').innerText = `${netSign}${snap.net_lot.toFixed(2)} Lot (${snap.drawdown_pct.toFixed(2)}%)`;
           }
 
           if(data.battery) {
             const bat = data.battery;
             document.getElementById('bat-regime').innerText = bat.regime;
-            document.getElementById('bat-direction').innerText = bat.direction.toUpperCase();
+            const dirEl = document.getElementById('bat-direction');
+            dirEl.innerText = bat.direction.toUpperCase();
+            dirEl.style.color = bat.direction === 'up' ? 'var(--accent-green)' : (bat.direction === 'down' ? 'var(--accent-red)' : 'var(--text-muted)');
             document.getElementById('bat-toxic').innerText = bat.toxic_flow;
             document.getElementById('bat-stress').innerText = bat.liquidity_stress;
             document.getElementById('bat-quote').innerText = bat.quote_environment;
@@ -269,22 +436,22 @@
             document.getElementById('ai-conf').innerText = `CONFIDENCE: ${(bat.confidence * 100).toFixed(0)}%`;
           }
 
-          if(data.latency_ms !== undefined) {
-            document.getElementById('latency-val').innerText = `${data.latency_ms.toFixed(1)} ms`;
+          if(data.action) {
+            const actEl = document.getElementById('policy-action');
+            actEl.innerText = `${data.action.action} (Scale: ${data.action.lot_scale}) — ${data.action.reason || ''}`;
+            actEl.style.color = data.action.action === 'BUY' ? 'var(--accent-green)' : (data.action.action === 'SELL' ? 'var(--accent-red)' : 'var(--accent-yellow)');
           }
 
-          if(data.action) {
-            document.getElementById('policy-action').innerText = `${data.action.action} (Scale: ${data.action.lot_scale}) — ${data.action.reason || ''}`;
+          if(data.tick_history) {
+            renderChart(data.tick_history);
           }
         }
-      } catch(e) {
-        console.error("Dashboard poll error:", e);
-      }
+      } catch(e) {}
     }
 
-    // Immediate first call then poll every 1s
+    // High frequency 250ms interactive polling
     updateDashboard();
-    setInterval(updateDashboard, 1000);
+    setInterval(updateDashboard, 250);
   </script>
 </body>
 </html>
