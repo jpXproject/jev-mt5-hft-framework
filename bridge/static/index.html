@@ -6,6 +6,7 @@
   <title>Jev-MT5 Interactive Real-Time Sentinel | jpXCode Pro</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
   <style>
     :root {
       --bg: #070a12;
@@ -24,21 +25,21 @@
       background-color: var(--bg);
       color: var(--text-primary);
       font-family: 'Inter', sans-serif;
-      padding: 20px;
+      padding: 16px 20px;
       min-height: 100vh;
     }
     header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
+      margin-bottom: 18px;
       border-bottom: 1px solid var(--border);
-      padding-bottom: 14px;
+      padding-bottom: 12px;
       flex-wrap: wrap;
       gap: 12px;
     }
     .brand { display: flex; align-items: center; gap: 12px; }
-    .brand h1 { font-family: 'JetBrains Mono', monospace; font-size: 20px; letter-spacing: 1px; color: var(--accent-cyan); }
+    .brand h1 { font-family: 'JetBrains Mono', monospace; font-size: 19px; letter-spacing: 1px; color: var(--accent-cyan); }
     .badge {
       padding: 4px 10px;
       border-radius: 4px;
@@ -49,21 +50,22 @@
       letter-spacing: 0.5px;
     }
     .badge-run { background: rgba(0, 230, 118, 0.15); color: var(--accent-green); border: 1px solid var(--accent-green); }
-    .badge-reduce { background: rgba(255, 179, 0, 0.15); color: var(--accent-yellow); border: 1px solid var(--accent-yellow); }
-    .badge-hold { background: rgba(255, 51, 102, 0.15); color: var(--accent-red); border: 1px solid var(--accent-red); }
+    .badge-auto { background: rgba(0, 240, 255, 0.15); color: var(--accent-cyan); border: 1px solid var(--accent-cyan); }
 
-    .header-actions { display: flex; align-items: center; gap: 12px; }
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+    .btn {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
     .btn-panic {
       background: rgba(255, 51, 102, 0.2);
       border: 1px solid var(--accent-red);
       color: #ff6688;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
-      font-weight: 700;
-      padding: 6px 14px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.2s;
     }
     .btn-panic:hover { background: var(--accent-red); color: white; box-shadow: 0 0 12px rgba(255, 51, 102, 0.6); }
 
@@ -84,28 +86,27 @@
 
     .grid-metrics {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-      gap: 14px;
-      margin-bottom: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
     }
     .card {
       background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 14px 16px;
+      padding: 12px 16px;
       backdrop-filter: blur(12px);
-      transition: border-color 0.2s;
     }
     .card-title {
-      font-size: 11px;
+      font-size: 10px;
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.5px;
       font-family: 'JetBrains Mono', monospace;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
     .card-value {
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 700;
       font-family: 'JetBrains Mono', monospace;
       transition: color 0.3s;
@@ -113,73 +114,93 @@
     .flash-up { color: var(--accent-green) !important; text-shadow: 0 0 8px rgba(0,230,118,0.5); }
     .flash-down { color: var(--accent-red) !important; text-shadow: 0 0 8px rgba(255,51,102,0.5); }
 
-    /* Interactive Canvas Chart */
-    .chart-container {
+    /* Tabbed Chart Container */
+    .chart-box {
       background: #0b1120;
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 16px;
-      margin-bottom: 20px;
-      position: relative;
+      padding: 14px;
+      margin-bottom: 16px;
     }
-    .chart-header {
+    .chart-tabs {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+      flex-wrap: wrap;
+      gap: 8px;
     }
-    .chart-legend { display: flex; gap: 16px; }
-    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; }
-    .line-indicator { width: 14px; height: 3px; border-radius: 2px; }
-    canvas { width: 100%; height: 200px; display: block; }
+    .tab-group { display: flex; gap: 8px; }
+    .tab-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .tab-btn.active {
+      background: rgba(0, 240, 255, 0.15);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+      font-weight: 700;
+    }
+    .chart-legend { display: flex; gap: 14px; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .line-indicator { width: 12px; height: 3px; border-radius: 2px; }
+
+    canvas { width: 100%; height: 210px; display: block; }
+    #tv-chart-wrapper { width: 100%; height: 380px; display: none; border-radius: 6px; overflow: hidden; }
 
     .main-layout {
       display: grid;
       grid-template-columns: 2fr 1fr;
-      gap: 16px;
+      gap: 14px;
     }
     @media(max-width: 900px) { .main-layout { grid-template-columns: 1fr; } }
 
     .battery-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-      margin-top: 10px;
+      gap: 8px;
+      margin-top: 8px;
     }
     .battery-item {
       background: rgba(10, 15, 29, 0.6);
       border: 1px solid var(--border);
-      padding: 10px 12px;
+      padding: 8px 10px;
       border-radius: 6px;
     }
     .battery-label { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
-    .battery-val { font-size: 14px; font-weight: 600; margin-top: 2px; }
+    .battery-val { font-size: 13px; font-weight: 600; margin-top: 2px; }
 
-    .risk-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+    .risk-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
     .risk-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 8px 10px;
+      padding: 6px 10px;
       background: rgba(10, 15, 29, 0.5);
       border-radius: 6px;
       font-size: 11px;
       font-family: 'JetBrains Mono', monospace;
     }
-    .status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 5px; }
     .dot-ok { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); }
 
     .log-box {
-      margin-top: 20px;
+      margin-top: 16px;
       background: #050811;
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 14px;
+      padding: 12px;
       font-family: 'JetBrains Mono', monospace;
       font-size: 11px;
-      height: 160px;
+      height: 140px;
       overflow-y: auto;
     }
     .log-entry { margin-bottom: 4px; color: var(--text-muted); }
@@ -193,13 +214,14 @@
     <div class="brand">
       <h1>⚡ JEV-MT5 SENTINEL</h1>
       <span class="badge badge-run" id="ladder-badge">RUN (OPTIMAL)</span>
+      <span class="badge badge-auto" id="auto-badge">⚡ AUTOREFRESH: 250ms</span>
     </div>
     <div class="header-actions">
-      <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-muted);">
-        <span class="pulse-dot"></span><span id="sync-status">MT5 LIVE SYNC</span> |
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted);">
+        <span class="pulse-dot"></span><span id="sync-status">MT5 DIRECT SYNC</span> |
         Latency: <span id="latency-val" style="color: var(--accent-cyan); font-weight:600;">0.5 ms</span>
       </div>
-      <button class="btn-panic" onclick="triggerPanicFlatten()">🚨 PANIC FLATTEN</button>
+      <button class="btn btn-panic" onclick="triggerPanicFlatten()">🚨 PANIC FLATTEN</button>
     </div>
   </header>
 
@@ -222,17 +244,29 @@
     </div>
   </div>
 
-  <!-- Interactive Real-Time Chart -->
-  <div class="chart-container">
-    <div class="chart-header">
-      <span>📈 REAL-TIME TICK DYNAMICS (MID vs RESERVATION PRICE)</span>
-      <div class="chart-legend">
+  <!-- Interactive Chart Section with Tabs -->
+  <div class="chart-box">
+    <div class="chart-tabs">
+      <div class="tab-group">
+        <button class="tab-btn active" id="tab-native" onclick="switchChartTab('native')">⚡ MT5 High-Frequency Tick Chart</button>
+        <button class="tab-btn" id="tab-tv" onclick="switchChartTab('tv')">📊 TradingView Live Candles (XAUUSD)</button>
+      </div>
+      <div class="chart-legend" id="native-legend">
         <div class="legend-item"><span class="line-indicator" style="background:var(--accent-cyan);"></span>Mid Price</div>
-        <div class="legend-item"><span class="line-indicator" style="background:var(--accent-gold);"></span>Reservation Price ($r$)</div>
-        <div class="legend-item"><span class="line-indicator" style="background:#94a3b8; border-top:1px dashed #94a3b8;"></span>Session VWAP</div>
+        <div class="legend-item"><span class="line-indicator" style="background:var(--accent-gold);"></span>Reservation ($r$)</div>
+        <div class="legend-item"><span class="line-indicator" style="background:#64748b; border-top:1px dashed #64748b;"></span>Session VWAP</div>
       </div>
     </div>
-    <canvas id="liveChart"></canvas>
+    
+    <!-- Native High-Frequency Tick Canvas -->
+    <div id="native-chart-wrapper">
+      <canvas id="liveChart"></canvas>
+    </div>
+
+    <!-- Embedded TradingView Candlestick Chart -->
+    <div id="tv-chart-wrapper">
+      <div id="tradingview_gold_chart" style="width:100%; height:100%;"></div>
+    </div>
   </div>
 
   <div class="main-layout">
@@ -240,7 +274,7 @@
     <div class="card">
       <div style="display:flex; justify-content:space-between; align-items:center;">
         <span class="card-title" style="margin:0;">🧠 7-Question Decision Battery (Gemini Engine)</span>
-        <span id="ai-conf" style="font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--accent-green);">CONFIDENCE: 82%</span>
+        <span id="ai-conf" style="font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--accent-green);">CONFIDENCE: 82%</span>
       </div>
       <div class="battery-grid">
         <div class="battery-item">
@@ -268,7 +302,7 @@
           <div class="battery-val" id="bat-inv">balanced</div>
         </div>
       </div>
-      <div style="margin-top:12px; padding:10px; background:rgba(0,240,255,0.05); border:1px solid rgba(0,240,255,0.2); border-radius:6px; font-size:12px; font-family:'JetBrains Mono',monospace;">
+      <div style="margin-top:10px; padding:8px 10px; background:rgba(0,240,255,0.05); border:1px solid rgba(0,240,255,0.2); border-radius:6px; font-size:11px; font-family:'JetBrains Mono',monospace;">
         Action Composer Decision: <b id="policy-action" style="color:var(--accent-red);">SELL (Scale: 1.0)</b> — Negative momentum towards VWAP
       </div>
     </div>
@@ -288,20 +322,64 @@
   </div>
 
   <div class="log-box" id="log-box">
-    <div class="log-entry"><span class="time">[LIVE]</span> <span class="hl">SENTINEL_IPC:</span> Sub-millisecond direct socket stream connected to MetaTrader 5</div>
+    <div class="log-entry"><span class="time">[AUTOREFRESH]</span> <span class="hl">SENTINEL_IPC:</span> Continuous sub-second live synchronization active</div>
   </div>
 
   <script>
     let lastMid = 0;
+    let tvWidgetLoaded = false;
     const canvas = document.getElementById('liveChart');
     const ctx = canvas.getContext('2d');
 
     function resizeCanvas() {
-      canvas.width = canvas.parentElement.clientWidth - 32;
-      canvas.height = 200;
+      if(canvas.parentElement) {
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = 210;
+      }
     }
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
+
+    function switchChartTab(tab) {
+      const tabNative = document.getElementById('tab-native');
+      const tabTv = document.getElementById('tab-tv');
+      const nativeWrapper = document.getElementById('native-chart-wrapper');
+      const tvWrapper = document.getElementById('tv-chart-wrapper');
+      const legend = document.getElementById('native-legend');
+
+      if(tab === 'native') {
+        tabNative.className = 'tab-btn active';
+        tabTv.className = 'tab-btn';
+        nativeWrapper.style.display = 'block';
+        tvWrapper.style.display = 'none';
+        legend.style.display = 'flex';
+        resizeCanvas();
+      } else {
+        tabNative.className = 'tab-btn';
+        tabTv.className = 'tab-btn active';
+        nativeWrapper.style.display = 'none';
+        tvWrapper.style.display = 'block';
+        legend.style.display = 'none';
+
+        if(!tvWidgetLoaded && typeof TradingView !== 'undefined') {
+          tvWidgetLoaded = true;
+          new TradingView.widget({
+            "autosize": true,
+            "symbol": "OANDA:XAUUSD",
+            "interval": "1",
+            "timezone": "Asia/Jakarta",
+            "theme": "dark",
+            "style": "1",
+            "locale": "en",
+            "toolbar_bg": "#0b1120",
+            "enable_publishing": false,
+            "hide_top_toolbar": false,
+            "save_image": false,
+            "container_id": "tradingview_gold_chart"
+          });
+        }
+      }
+    }
 
     function renderChart(history) {
       if(!history || history.length < 2) return;
@@ -315,14 +393,13 @@
       const minVal = Math.min(...allVals) - 0.2;
       const maxVal = Math.max(...allVals) + 0.2;
       const range = (maxVal - minVal) || 1.0;
-
       const stepX = canvas.width / (history.length - 1);
 
       function getY(val) {
-        return canvas.height - ((val - minVal) / range) * (canvas.height - 20) - 10;
+        return canvas.height - ((val - minVal) / range) * (canvas.height - 24) - 12;
       }
 
-      // Draw Grid Lines
+      // Draw Grid
       ctx.strokeStyle = "rgba(51, 65, 85, 0.25)";
       ctx.lineWidth = 1;
       for(let i = 1; i <= 3; i++) {
@@ -333,7 +410,7 @@
         ctx.stroke();
       }
 
-      // Draw Session VWAP Line (Dashed Silver)
+      // Session VWAP Line (Dashed Silver)
       ctx.beginPath();
       ctx.strokeStyle = "#64748b";
       ctx.lineWidth = 1.5;
@@ -347,7 +424,7 @@
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Draw Reservation Price Line (Gold)
+      // Reservation Price Line (Gold)
       ctx.beginPath();
       ctx.strokeStyle = "#ffd700";
       ctx.lineWidth = 2;
@@ -359,7 +436,7 @@
       });
       ctx.stroke();
 
-      // Draw Mid Price Line (Cyan)
+      // Mid Price Line (Cyan)
       ctx.beginPath();
       ctx.strokeStyle = "#00f0ff";
       ctx.lineWidth = 2.5;
@@ -371,7 +448,7 @@
       });
       ctx.stroke();
 
-      // Pulse at the current latest point
+      // Current point circle
       const lastX = (history.length - 1) * stepX;
       const lastY = getY(mids[mids.length - 1]);
       ctx.fillStyle = "#00f0ff";
@@ -381,13 +458,13 @@
     }
 
     async function triggerPanicFlatten() {
-      if(!confirm("⚠️ ATTENTION: Close ALL open positions on MT5 immediately?")) return;
+      if(!confirm("⚠️ PERINGATAN: Tutup SEMUA posisi aktif di MT5 sekarang?")) return;
       try {
         const res = await fetch('/api/panic_flatten', { method: 'POST' });
         const data = await res.json();
-        alert(`🚨 Panic Flatten Result: ${data.status} (Closed: ${data.closed_positions || 0})`);
+        alert(`🚨 Panic Flatten Result: ${data.status} (Ditutup: ${data.closed_positions || 0} posisi)`);
       } catch(e) {
-        alert("Panic Flatten failed: " + e);
+        alert("Panic Flatten gagal: " + e);
       }
     }
 
@@ -400,7 +477,6 @@
             const snap = data.snapshot;
             const midEl = document.getElementById('mid-price');
 
-            // Flash effect on price move
             if(lastMid !== 0 && snap.mid !== lastMid) {
               midEl.className = 'card-value ' + (snap.mid > lastMid ? 'flash-up' : 'flash-down');
               setTimeout(() => { midEl.className = 'card-value'; }, 300);
@@ -449,9 +525,14 @@
       } catch(e) {}
     }
 
-    // High frequency 250ms interactive polling
+    // High frequency 250ms interactive polling (continuous autorefresh)
     updateDashboard();
     setInterval(updateDashboard, 250);
+
+    // Auto-reconnect when tab is focused
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) updateDashboard();
+    });
   </script>
 </body>
 </html>
