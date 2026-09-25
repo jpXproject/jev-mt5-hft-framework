@@ -13,6 +13,7 @@ import os
 import time
 import json
 import asyncio
+import random
 import threading
 from typing import List, Optional
 import uvicorn
@@ -20,6 +21,16 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, JSONResponse
 from pydantic import BaseModel
+
+try:
+    import MetaTrader5 as mt5
+    HAS_MT5 = True
+except ImportError:
+    mt5 = None
+    HAS_MT5 = False
+
+pending_orders_queue: List[dict] = []
+order_results_cache: dict = {}
 
 from gemini_client import evaluate_market_state
 from strategy import compose_action
@@ -173,6 +184,9 @@ async def evaluate(snapshot: MarketSnapshot):
     except Exception:
         pass
 
+    pending_to_send = pending_orders_queue.copy()
+    pending_orders_queue.clear()
+
     return {
         "status": "success",
         "symbol": snapshot.symbol,
@@ -181,98 +195,157 @@ async def evaluate(snapshot: MarketSnapshot):
         "action": action,
         "direction": battery.get("direction", "neutral").upper(),
         "regime": battery.get("regime", "chaotic"),
-        "confidence": battery.get("confidence", 0.50)
+        "confidence": battery.get("confidence", 0.50),
+        "pending_orders": pending_to_send
     }
 
+@app.post("/api/order/result")
+async def api_order_result(res: dict):
+    cmd_id = res.get("cmd_id")
+    if cmd_id:
+        order_results_cache[cmd_id] = res
+    return {"status": "ok"}
+
 @app.post("/api/panic_flatten")
-def panic_flatten():
-    """Emergency close all positions via MT5 API"""
-    try:
-        import MetaTrader5 as mt5
-        if not mt5.initialize():
-            return {"status": "error", "message": "Failed to connect to MT5"}
-        
-        positions = mt5.positions_get(symbol="XAUUSDc")
-        closed_count = 0
-        if positions:
-            for p in positions:
-                order_type = mt5.ORDER_TYPE_SELL if p.type == mt5.POSITION_TYPE_BUY else mt5.ORDER_TYPE_BUY
-                price = mt5.symbol_info_tick(p.symbol).bid if order_type == mt5.ORDER_TYPE_SELL else mt5.symbol_info_tick(p.symbol).ask
-                req = {
-                    "action": mt5.TRADE_ACTION_DEAL,
-                    "symbol": p.symbol,
-                    "volume": p.volume,
-                    "type": order_type,
-                    "position": p.ticket,
-                    "price": price,
-                    "deviation": 30,
-                    "magic": p.magic,
-                    "comment": "Jev Emergency Flatten",
-                    "type_time": mt5.ORDER_TIME_GTC,
-                    "type_filling": mt5.ORDER_FILLING_FOK
-                }
-                res = mt5.order_send(req)
-                if res and res.retcode == mt5.TRADE_RETCODE_DONE:
-                    closed_count += 1
-        return {"status": "success", "closed_positions": closed_count}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+async def panic_flatten():
+    """Emergency close all positions via MT5 API or dispatch to Windows MT5 Daemon"""
+    cmd_id = f"flat_{int(time.time()*1000)}_{random.randint(100,999)}"
+
+    if HAS_MT5 and mt5:
+        try:
+            if not mt5.initialize():
+                return {"status": "error", "message": "Failed to connect to MT5"}
+            positions = mt5.positions_get(symbol="XAUUSDc")
+            closed_count = 0
+            if positions:
+                for p in positions:
+                    order_type = mt5.ORDER_TYPE_SELL if p.type == mt5.POSITION_TYPE_BUY else mt5.ORDER_TYPE_BUY
+                    price = mt5.symbol_info_tick(p.symbol).bid if order_type == mt5.ORDER_TYPE_SELL else mt5.symbol_info_tick(p.symbol).ask
+                    req = {
+                        "action": mt5.TRADE_ACTION_DEAL,
+                        "symbol": p.symbol,
+                        "volume": p.volume,
+                        "type": order_type,
+                        "position": p.ticket,
+                        "price": price,
+                        "deviation": 30,
+                        "magic": p.magic,
+                        "comment": "Jev Emergency Flatten",
+                        "type_time": mt5.ORDER_TIME_GTC,
+                        "type_filling": mt5.ORDER_FILLING_IOC
+                    }
+                    res = mt5.order_send(req)
+                    if res and res.retcode != mt5.TRADE_RETCODE_DONE:
+                        req["type_filling"] = mt5.ORDER_FILLING_RETURN
+                        res = mt5.order_send(req)
+                    if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+                        closed_count += 1
+            return {"status": "success", "closed_positions": closed_count}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    # Distributed Mode (Linux VPS -> Windows Client)
+    cmd = {
+        "cmd_id": cmd_id,
+        "type": "PANIC_FLATTEN",
+        "symbol": "XAUUSDc",
+        "created_at": time.time()
+    }
+    pending_orders_queue.append(cmd)
+
+    t0 = time.time()
+    while time.time() - t0 < 3.5:
+        if cmd_id in order_results_cache:
+            res = order_results_cache.pop(cmd_id)
+            return res
+        await asyncio.sleep(0.05)
+
+    return {"status": "success", "message": "Perintah Panic Flatten dikirim ke terminal MT5"}
 
 @app.post("/api/order/execute")
 async def api_order_execute(req_data: dict):
-    try:
-        import MetaTrader5 as mt5
-        if not mt5.initialize():
-            return {"status": "error", "message": "Failed to connect to MT5"}
-        
-        symbol = req_data.get("symbol", "XAUUSDc")
-        action = req_data.get("action", "BUY").upper()
-        lot = float(req_data.get("volume", 0.01))
-        sl = float(req_data.get("sl", 0.0))
-        tp = float(req_data.get("tp", 0.0))
-        
-        tick = mt5.symbol_info_tick(symbol)
-        if not tick:
-            return {"status": "error", "message": f"Tick for {symbol} unavailable"}
-        
-        price = tick.ask if action == "BUY" else tick.bid
-        order_type = mt5.ORDER_TYPE_BUY if action == "BUY" else mt5.ORDER_TYPE_SELL
-        
-        req = {
-            "action": mt5.TRADE_ACTION_DEAL,
-            "symbol": symbol,
-            "volume": lot,
-            "type": order_type,
-            "price": price,
-            "sl": sl,
-            "tp": tp,
-            "deviation": 25,
-            "magic": 20260925,
-            "comment": f"Jev WebPanel {action}",
-            "type_time": mt5.ORDER_TIME_GTC,
-            "type_filling": mt5.ORDER_FILLING_IOC,
-        }
-        res = mt5.order_send(req)
-        if res and res.retcode != mt5.TRADE_RETCODE_DONE:
-            req["type_filling"] = mt5.ORDER_FILLING_RETURN
-            res = mt5.order_send(req)
-        
-        if res and res.retcode == mt5.TRADE_RETCODE_DONE:
-            return {
-                "status": "success",
-                "order": res.order,
-                "deal": res.deal,
+    symbol = req_data.get("symbol", "XAUUSDc")
+    action = req_data.get("action", "BUY").upper()
+    lot = float(req_data.get("volume", 0.01))
+    sl = float(req_data.get("sl", 0.0))
+    tp = float(req_data.get("tp", 0.0))
+    cmd_id = f"cmd_{int(time.time()*1000)}_{random.randint(100,999)}"
+
+    # If running on Windows with local MT5
+    if HAS_MT5 and mt5:
+        try:
+            if not mt5.initialize():
+                return {"status": "error", "message": "Failed to connect to MT5"}
+            tick = mt5.symbol_info_tick(symbol)
+            if not tick:
+                return {"status": "error", "message": f"Tick for {symbol} unavailable"}
+            price = tick.ask if action == "BUY" else tick.bid
+            order_type = mt5.ORDER_TYPE_BUY if action == "BUY" else mt5.ORDER_TYPE_SELL
+            req = {
+                "action": mt5.TRADE_ACTION_DEAL,
+                "symbol": symbol,
+                "volume": lot,
+                "type": order_type,
                 "price": price,
-                "action": action,
-                "lot": lot,
                 "sl": sl,
-                "tp": tp
+                "tp": tp,
+                "deviation": 25,
+                "magic": 20260925,
+                "comment": f"Jev WebPanel {action}",
+                "type_time": mt5.ORDER_TIME_GTC,
+                "type_filling": mt5.ORDER_FILLING_IOC,
             }
-        else:
-            err_msg = res.comment if res else "Unknown execution error"
-            return {"status": "error", "message": err_msg, "retcode": res.retcode if res else -1}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+            res = mt5.order_send(req)
+            if res and res.retcode != mt5.TRADE_RETCODE_DONE:
+                req["type_filling"] = mt5.ORDER_FILLING_RETURN
+                res = mt5.order_send(req)
+            if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+                return {
+                    "status": "success",
+                    "order": res.order,
+                    "deal": res.deal,
+                    "price": price,
+                    "action": action,
+                    "lot": lot,
+                    "sl": sl,
+                    "tp": tp
+                }
+            else:
+                err_msg = res.comment if res else "Unknown execution error"
+                return {"status": "error", "message": err_msg, "retcode": res.retcode if res else -1}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    # Distributed Mode (Linux VPS -> Windows Client MT5 Daemon)
+    cmd = {
+        "cmd_id": cmd_id,
+        "type": "ORDER",
+        "symbol": symbol,
+        "action": action,
+        "volume": lot,
+        "sl": sl,
+        "tp": tp,
+        "created_at": time.time()
+    }
+    pending_orders_queue.append(cmd)
+
+    # Wait up to 3.5s for Windows MT5 execution result
+    t0 = time.time()
+    while time.time() - t0 < 3.5:
+        if cmd_id in order_results_cache:
+            res = order_results_cache.pop(cmd_id)
+            return res
+        await asyncio.sleep(0.05)
+
+    return {
+        "status": "success",
+        "order": "QUEUED_TO_MT5",
+        "deal": cmd_id,
+        "price": "IN_PROGRESS",
+        "action": action,
+        "lot": lot,
+        "message": "Order berhasil dikirim ke antrian terminal MT5"
+    }
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
