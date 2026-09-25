@@ -252,7 +252,23 @@
   <!-- ======================================================== -->
   <!-- 🎛️ PANEL INTERAKTIF EKSEKUSI, SARAN SL/TP, & KEKUATAN PASAR -->
   <!-- ======================================================== -->
-  <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:16px 20px; margin-bottom:15px; box-shadow:0 6px 20px rgba(0,0,0,0.35);">
+  <div id="interactive-trading-panel" style="background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:16px 20px; margin-bottom:15px; box-shadow:0 6px 20px rgba(0,0,0,0.35); transition:transform 0.2s ease, width 0.2s ease;">
+    
+    <!-- Header Panel Draggable & Kontrol Resize Prosentase -->
+    <div id="panel-drag-handle" style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,240,255,0.06); border:1px solid rgba(0,240,255,0.2); border-radius:8px; padding:6px 12px; margin-bottom:12px; cursor:move; user-select:none;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:12px; cursor:grab;">⠿</span>
+        <span style="font-size:11px; font-weight:700; color:var(--accent-cyan); font-family:'JetBrains Mono',monospace;">🎛️ PANEL KONTROL EKSEKUSI & SINYAL (DRAGGABLE)</span>
+      </div>
+      <!-- Tombol Prosentase Resize Skala -->
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span style="font-size:10px; color:var(--text-muted); font-family:'JetBrains Mono',monospace;">UKURAN:</span>
+        <button onclick="adjustPanelScale(-0.25)" class="btn" style="padding:2px 8px; font-size:10px; background:#1e293b; color:var(--text-primary); border:1px solid var(--border);" title="Perkecil Panel 25%">-25%</button>
+        <span id="panel-scale-label" style="font-size:10px; font-weight:bold; color:var(--accent-gold); font-family:'JetBrains Mono',monospace; min-width:36px; text-align:center;">100%</span>
+        <button onclick="resetPanelScale()" class="btn" style="padding:2px 8px; font-size:10px; background:#1e293b; color:var(--accent-cyan); border:1px solid var(--border);" title="Reset Skala 100%">100%</button>
+        <button onclick="adjustPanelScale(0.25)" class="btn" style="padding:2px 8px; font-size:10px; background:#1e293b; color:var(--text-primary); border:1px solid var(--border);" title="Perbesar Panel 25%">+25%</button>
+      </div>
+    </div>
     
     <!-- Bagian 1: Meter Kekuatan BUY vs SELL -->
     <div style="margin-bottom:14px;">
@@ -900,6 +916,83 @@
       });
       tbody.innerHTML = html;
     }
+
+    // ==========================================
+    // 🎛️ PANEL DRAG & RESIZE PERSENTASE HANDLER
+    // ==========================================
+    let g_panelScale = parseFloat(localStorage.getItem('jev_panel_scale') || '1.0');
+    function applyPanelScale() {
+      const panel = document.getElementById('interactive-trading-panel');
+      const label = document.getElementById('panel-scale-label');
+      if (panel) {
+        panel.style.transform = `scale(${g_panelScale})`;
+        panel.style.transformOrigin = 'top center';
+      }
+      if (label) {
+        label.innerText = `${Math.round(g_panelScale * 100)}%`;
+      }
+      localStorage.setItem('jev_panel_scale', g_panelScale.toString());
+    }
+
+    function adjustPanelScale(delta) {
+      g_panelScale = Math.min(1.75, Math.max(0.5, Math.round((g_panelScale + delta) * 100) / 100));
+      applyPanelScale();
+    }
+
+    function resetPanelScale() {
+      g_panelScale = 1.0;
+      applyPanelScale();
+    }
+
+    // Interactive Drag Logic for Panel
+    (function initPanelDrag() {
+      const handle = document.getElementById('panel-drag-handle');
+      const panel = document.getElementById('interactive-trading-panel');
+      if (!handle || !panel) return;
+
+      let isDragging = false;
+      let startX, startY, origX = 0, origY = 0;
+
+      const savedPos = localStorage.getItem('jev_panel_pos');
+      if (savedPos) {
+        try {
+          const pos = JSON.parse(savedPos);
+          origX = pos.x || 0;
+          origY = pos.y || 0;
+          panel.style.position = 'relative';
+          panel.style.left = `${origX}px`;
+          panel.style.top = `${origY}px`;
+        } catch(e) {}
+      }
+
+      handle.addEventListener('mousedown', (e) => {
+        if (e.target.tagName === 'BUTTON') return;
+        isDragging = true;
+        startX = e.clientX - origX;
+        startY = e.clientY - origY;
+        handle.style.cursor = 'grabbing';
+        e.preventDefault();
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        origX = e.clientX - startX;
+        origY = e.clientY - startY;
+        panel.style.position = 'relative';
+        panel.style.left = `${origX}px`;
+        panel.style.top = `${origY}px`;
+      });
+
+      document.addEventListener('mouseup', () => {
+        if (isDragging) {
+          isDragging = false;
+          handle.style.cursor = 'move';
+          localStorage.setItem('jev_panel_pos', JSON.stringify({ x: origX, y: origY }));
+        }
+      });
+
+      applyPanelScale();
+    })();
 
     // High frequency 250ms interactive polling (continuous autorefresh)
     updateDashboard();

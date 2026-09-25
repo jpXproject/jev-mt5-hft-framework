@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright   "Copyright 2026, jpXCode Pro"
 #property link        "https://jpxcode.pages.dev"
-#property version     "1.20"
+#property version     "1.30"
 #property indicator_chart_window
 #property indicator_plots 0
 
@@ -13,9 +13,10 @@
 #include "..\Include\JevState.mqh"
 #include "..\Include\JevFallback.mqh"
 
-input group "=== HUD Position & Styling ==="
-input int      InpXDistance         = 20;            // X Distance from corner
-input int      InpYDistance         = 30;            // Y Distance from corner
+input group "=== HUD Position & Default Styling ==="
+input int      InpXDistance         = 20;            // X Default Distance
+input int      InpYDistance         = 30;            // Y Default Distance
+input double   InpDefaultScale      = 1.00;          // Skala Panel Default (1.0 = 100%)
 input color    InpBgColor           = C'12,18,30';   // Panel Background Color
 input color    InpBorderColor       = C'43,62,97';   // Panel Border Color
 input color    InpTextColor         = clrWhite;      // Primary Text Color
@@ -46,8 +47,25 @@ CJevFallbackLadder  g_ladder;
 int                 g_atr_handle = INVALID_HANDLE;
 
 const string PREFIX = "JEV_HUD_";
+
+//--- State Drag & Scaling
+int    g_panelX     = 20;
+int    g_panelY     = 30;
+double g_scale      = 1.00;
+bool   g_isDragging = false;
+int    g_dragOffX   = 0;
+int    g_dragOffY   = 0;
+
 double g_last_buy_sl = 0.0, g_last_buy_tp = 0.0;
 double g_last_sell_sl = 0.0, g_last_sell_tp = 0.0;
+
+// Scaling helpers
+int S(int v) { return (int)MathRound(v * g_scale); }
+int F(int font_size) { int sz = (int)MathRound(font_size * g_scale); return (sz < 7) ? 7 : sz; }
+
+string VarNameX() { return StringFormat("JEV_HUD_X_%I64d", ChartID()); }
+string VarNameY() { return StringFormat("JEV_HUD_Y_%I64d", ChartID()); }
+string VarNameS() { return StringFormat("JEV_HUD_S_%I64d", ChartID()); }
 
 //+------------------------------------------------------------------+
 //| Custom indicator initialization function                         |
@@ -59,7 +77,23 @@ int OnInit()
 
    g_atr_handle = iATR(_Symbol, _Period, InpATRPeriod);
 
+   // Restore Position and Scale if saved
+   if(GlobalVariableCheck(VarNameX())) g_panelX = (int)GlobalVariableGet(VarNameX());
+   else g_panelX = InpXDistance;
+
+   if(GlobalVariableCheck(VarNameY())) g_panelY = (int)GlobalVariableGet(VarNameY());
+   else g_panelY = InpYDistance;
+
+   if(GlobalVariableCheck(VarNameS())) g_scale = GlobalVariableGet(VarNameS());
+   else g_scale = InpDefaultScale;
+
+   if(g_scale < 0.75) g_scale = 0.75;
+   if(g_scale > 1.75) g_scale = 1.75;
+
+   ChartSetInteger(0, CHART_EVENT_MOUSE_MOVE, true);
+
    CreatePanel();
+   UpdateHUD();
    EventSetTimer(1);
    return(INIT_SUCCEEDED);
 }
@@ -70,6 +104,7 @@ int OnInit()
 void OnDeinit(const int reason)
 {
    EventKillTimer();
+   ChartSetInteger(0, CHART_EVENT_MOUSE_MOVE, false);
    if(g_atr_handle != INVALID_HANDLE)
       IndicatorRelease(g_atr_handle);
    ObjectsDeleteAll(0, PREFIX);
@@ -86,34 +121,34 @@ void CreateLabel(const string name, int x, int y, string text, color clr, int fo
    {
       ObjectCreate(0, objName, OBJ_LABEL, 0, 0, 0);
       ObjectSetInteger(0, objName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSetInteger(0, objName, OBJPROP_XDISTANCE, x);
-      ObjectSetInteger(0, objName, OBJPROP_YDISTANCE, y);
       ObjectSetInteger(0, objName, OBJPROP_SELECTABLE, false);
    }
+   ObjectSetInteger(0, objName, OBJPROP_XDISTANCE, x);
+   ObjectSetInteger(0, objName, OBJPROP_YDISTANCE, y);
    ObjectSetString(0, objName, OBJPROP_TEXT, text);
    ObjectSetInteger(0, objName, OBJPROP_COLOR, clr);
-   ObjectSetInteger(0, objName, OBJPROP_FONTSIZE, fontsize);
+   ObjectSetInteger(0, objName, OBJPROP_FONTSIZE, F(fontsize));
    ObjectSetString(0, objName, OBJPROP_FONT, bold ? "Arial Bold" : "Consolas");
 }
 
 //+------------------------------------------------------------------+
 //| Helper to create Interactive Button objects                      |
 //+------------------------------------------------------------------+
-void CreateButton(const string name, int x, int y, int width, int height, string text, color bg_clr, color text_clr)
+void CreateButton(const string name, int x, int y, int width, int height, string text, color bg_clr, color text_clr, int font_size = 9)
 {
    string objName = PREFIX + name;
    if(ObjectFind(0, objName) < 0)
    {
       ObjectCreate(0, objName, OBJ_BUTTON, 0, 0, 0);
       ObjectSetInteger(0, objName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSetInteger(0, objName, OBJPROP_XDISTANCE, x);
-      ObjectSetInteger(0, objName, OBJPROP_YDISTANCE, y);
-      ObjectSetInteger(0, objName, OBJPROP_XSIZE, width);
-      ObjectSetInteger(0, objName, OBJPROP_YSIZE, height);
-      ObjectSetInteger(0, objName, OBJPROP_FONTSIZE, 9);
       ObjectSetString(0, objName, OBJPROP_FONT, "Arial Bold");
       ObjectSetInteger(0, objName, OBJPROP_SELECTABLE, false);
    }
+   ObjectSetInteger(0, objName, OBJPROP_XDISTANCE, x);
+   ObjectSetInteger(0, objName, OBJPROP_YDISTANCE, y);
+   ObjectSetInteger(0, objName, OBJPROP_XSIZE, width);
+   ObjectSetInteger(0, objName, OBJPROP_YSIZE, height);
+   ObjectSetInteger(0, objName, OBJPROP_FONTSIZE, F(font_size));
    ObjectSetString(0, objName, OBJPROP_TEXT, text);
    ObjectSetInteger(0, objName, OBJPROP_BGCOLOR, bg_clr);
    ObjectSetInteger(0, objName, OBJPROP_COLOR, text_clr);
@@ -130,20 +165,41 @@ void CreatePanel()
    {
       ObjectCreate(0, bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
       ObjectSetInteger(0, bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSetInteger(0, bgName, OBJPROP_XDISTANCE, InpXDistance);
-      ObjectSetInteger(0, bgName, OBJPROP_YDISTANCE, InpYDistance);
-      ObjectSetInteger(0, bgName, OBJPROP_XSIZE, 300);
-      ObjectSetInteger(0, bgName, OBJPROP_YSIZE, 320);
-      ObjectSetInteger(0, bgName, OBJPROP_BGCOLOR, InpBgColor);
-      ObjectSetInteger(0, bgName, OBJPROP_BORDER_COLOR, InpBorderColor);
       ObjectSetInteger(0, bgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
       ObjectSetInteger(0, bgName, OBJPROP_SELECTABLE, false);
    }
+   ObjectSetInteger(0, bgName, OBJPROP_XDISTANCE, g_panelX);
+   ObjectSetInteger(0, bgName, OBJPROP_YDISTANCE, g_panelY);
+   ObjectSetInteger(0, bgName, OBJPROP_XSIZE, S(310));
+   ObjectSetInteger(0, bgName, OBJPROP_YSIZE, S(330));
+   ObjectSetInteger(0, bgName, OBJPROP_BGCOLOR, InpBgColor);
+   ObjectSetInteger(0, bgName, OBJPROP_BORDER_COLOR, InpBorderColor);
 
-   // Interactive Buttons
-   CreateButton("BTN_BUY", InpXDistance + 12, InpYDistance + 248, 86, 26, "BUY 0.01", C'5,150,105', clrWhite);
-   CreateButton("BTN_SELL", InpXDistance + 104, InpYDistance + 248, 86, 26, "SELL 0.01", C'220,38,38', clrWhite);
-   CreateButton("BTN_COPY", InpXDistance + 196, InpYDistance + 248, 92, 26, "COPY SL/TP", C'30,58,138', clrWhite);
+   // Header Drag Handle Bar
+   string headerName = PREFIX + "HEADER_BAR";
+   if(ObjectFind(0, headerName) < 0)
+   {
+      ObjectCreate(0, headerName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
+      ObjectSetInteger(0, headerName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+      ObjectSetInteger(0, headerName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+      ObjectSetInteger(0, headerName, OBJPROP_SELECTABLE, false);
+   }
+   ObjectSetInteger(0, headerName, OBJPROP_XDISTANCE, g_panelX);
+   ObjectSetInteger(0, headerName, OBJPROP_YDISTANCE, g_panelY);
+   ObjectSetInteger(0, headerName, OBJPROP_XSIZE, S(310));
+   ObjectSetInteger(0, headerName, OBJPROP_YSIZE, S(28));
+   ObjectSetInteger(0, headerName, OBJPROP_BGCOLOR, C'20,30,50');
+   ObjectSetInteger(0, headerName, OBJPROP_BORDER_COLOR, InpBorderColor);
+
+   // Percentage Scale Resize Buttons on Title Bar
+   CreateButton("BTN_SC_M", g_panelX + S(200), g_panelY + S(3), S(32), S(22), "-25%", C'35,45,65', clrAqua, 7);
+   CreateButton("BTN_SC_R", g_panelX + S(234), g_panelY + S(3), S(38), S(22), "100%", C'35,45,65', clrWhite, 7);
+   CreateButton("BTN_SC_P", g_panelX + S(274), g_panelY + S(3), S(32), S(22), "+25%", C'35,45,65', clrAqua, 7);
+
+   // Interactive Execution & Action Buttons
+   CreateButton("BTN_BUY", g_panelX + S(12), g_panelY + S(260), S(90), S(28), "BUY 0.01", C'5,150,105', clrWhite, 8);
+   CreateButton("BTN_SELL", g_panelX + S(108), g_panelY + S(260), S(90), S(28), "SELL 0.01", C'220,38,38', clrWhite, 8);
+   CreateButton("BTN_COPY", g_panelX + S(204), g_panelY + S(260), S(94), S(28), "COPY SL/TP", C'30,58,138', clrWhite, 8);
 }
 
 //+------------------------------------------------------------------+
@@ -178,6 +234,8 @@ void UpdateChartLine(const string name, double price, color clr, int style, stri
 //+------------------------------------------------------------------+
 void UpdateHUD()
 {
+   CreatePanel();
+
    SJevSnapshot snap;
    if(!g_state.CaptureSnapshot(snap)) return;
 
@@ -197,7 +255,7 @@ void UpdateHUD()
    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
    double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
 
-   // Min SL & TP buffers (avoid spread noise: gold cent spread ~260 pts)
+   // Min SL & TP buffers
    double sl_dist = MathMax(atr_val * InpATRMultiplierSL, 850.0 * point);
    double tp_dist = MathMax(atr_val * InpATRMultiplierTP, 1500.0 * point);
 
@@ -220,49 +278,49 @@ void UpdateHUD()
    string dominant_bias = is_bullish ? "BUY (Above VWAP)" : "SELL (Below VWAP)";
    color bias_color = is_bullish ? InpAccentGreen : InpAccentRed;
 
-   // 1. Header
-   CreateLabel("TITLE", InpXDistance + 12, InpYDistance + 8, "⚡ JEV-MT5 SENTINEL v1.2", InpAccentCyan, 11, true);
-   CreateLabel("LADDER", InpXDistance + 12, InpYDistance + 28, "PANEL INTERAKTIF: ON", InpAccentGreen, 9, true);
+   // 1. Header (Title + Drag Hint)
+   string sc_pct = StringFormat("%.0f%%", g_scale * 100.0);
+   CreateLabel("TITLE", g_panelX + S(8), g_panelY + S(5), "⚡ JEV SENTINEL [DRAGGABLE]", InpAccentCyan, 9, true);
 
    // 2. Price & VWAP
    string p_str = StringFormat("Mid: %.3f | Spr: %.1f bps", snap.mid_price, snap.spread_bps);
-   CreateLabel("PRICES", InpXDistance + 12, InpYDistance + 46, p_str, InpTextColor, 9);
+   CreateLabel("PRICES", g_panelX + S(12), g_panelY + S(36), p_str, InpTextColor, 9);
 
    string r_str = StringFormat("Reserv.Price: %.3f", r_price);
-   CreateLabel("RESERV", InpXDistance + 12, InpYDistance + 62, r_str, clrGold, 9, true);
+   CreateLabel("RESERV", g_panelX + S(12), g_panelY + S(54), r_str, clrGold, 9, true);
 
    string v_str = StringFormat("Session VWAP: %.3f", snap.session_vwap);
-   CreateLabel("VWAP", InpXDistance + 12, InpYDistance + 78, v_str, clrSilver, 9);
+   CreateLabel("VWAP", g_panelX + S(12), g_panelY + S(72), v_str, clrSilver, 9);
 
    // 3. KEKUATAN BUY vs SELL
    string pwr_str = StringFormat("Kekuatan: BUY %.0f%% | SELL %.0f%%", buy_power, sell_power);
    color pwr_color = buy_power >= 50.0 ? InpAccentGreen : InpAccentRed;
-   CreateLabel("POWER", InpXDistance + 12, InpYDistance + 96, pwr_str, pwr_color, 9, true);
+   CreateLabel("POWER", g_panelX + S(12), g_panelY + S(92), pwr_str, pwr_color, 9, true);
 
    // 4. SARAN SL & TP SECTION
-   CreateLabel("SEP", InpXDistance + 12, InpYDistance + 116, "── SARAN SL / TP (AI QUANT) ──", clrGray, 8, true);
+   CreateLabel("SEP", g_panelX + S(12), g_panelY + S(112), "── SARAN SL / TP (AI QUANT) ──", clrGray, 8, true);
 
    string buy_str = StringFormat("🟢 BUY  SL: %.3f | TP: %.3f", buy_sl, buy_tp);
-   CreateLabel("SUGG_BUY", InpXDistance + 12, InpYDistance + 134, buy_str, InpAccentGreen, 9, is_bullish);
+   CreateLabel("SUGG_BUY", g_panelX + S(12), g_panelY + S(130), buy_str, InpAccentGreen, 9, is_bullish);
 
    string sell_str = StringFormat("🔴 SELL SL: %.3f | TP: %.3f", sell_sl, sell_tp);
-   CreateLabel("SUGG_SELL", InpXDistance + 12, InpYDistance + 152, sell_str, InpAccentRed, 9, !is_bullish);
+   CreateLabel("SUGG_SELL", g_panelX + S(12), g_panelY + S(148), sell_str, InpAccentRed, 9, !is_bullish);
 
    string bias_str = StringFormat("🎯 Bias: %s (R:R 1:1.73)", dominant_bias);
-   CreateLabel("BIAS", InpXDistance + 12, InpYDistance + 172, bias_str, bias_color, 9, true);
+   CreateLabel("BIAS", g_panelX + S(12), g_panelY + S(168), bias_str, bias_color, 9, true);
 
    // 5. Battery & Volatility
    string dir_str = StringFormat("ATR: %.3f | Vol Buffer: %.0f pts", atr_val, sl_dist / point);
-   CreateLabel("FLOW", InpXDistance + 12, InpYDistance + 192, dir_str, clrSkyBlue, 8);
+   CreateLabel("FLOW", g_panelX + S(12), g_panelY + S(188), dir_str, clrSkyBlue, 8);
 
-   string rec_str = "Target Recovery: 1,000 USC";
-   CreateLabel("REC_GOAL", InpXDistance + 12, InpYDistance + 210, rec_str, clrGold, 8, true);
+   string rec_str = StringFormat("Target Recovery: 1,000 USC | Skala: %s", sc_pct);
+   CreateLabel("REC_GOAL", g_panelX + S(12), g_panelY + S(206), rec_str, clrGold, 8, true);
 
-   string stat_str = "Klik Tombol di Bawah untuk Aksi:";
-   CreateLabel("BTN_HINT", InpXDistance + 12, InpYDistance + 228, stat_str, clrWhite, 8, false);
+   string stat_str = "Geser Header untuk Drag | Klik Tombol Aksi:";
+   CreateLabel("BTN_HINT", g_panelX + S(12), g_panelY + S(224), stat_str, clrLightSteelBlue, 8, false);
 
    // 6. Action Feedback Label
-   CreateLabel("ACTION_FEEDBACK", InpXDistance + 12, InpYDistance + 282, "Siap eksekusi / copy", clrDarkGray, 8, false);
+   CreateLabel("ACTION_FEEDBACK", g_panelX + S(12), g_panelY + S(294), "Siap eksekusi / copy", clrDarkGray, 8, false);
 
    // 7. Update Chart Lines
    if(InpShowReservLine)
@@ -288,36 +346,117 @@ void UpdateHUD()
 }
 
 //+------------------------------------------------------------------+
-//| Chart Event Handler (Interactive Button Clicks)                  |
+//| Chart Event Handler (Mouse Drag & Interactive Button Clicks)     |
 //+------------------------------------------------------------------+
 void OnChartEvent(const int id,
                   const long &lparam,
                   const double &dparam,
                   const string &sparam)
 {
+   // 1. Mouse Dragging
+   if(id == CHARTEVENT_MOUSE_MOVE)
+   {
+      int mx = (int)lparam;
+      int my = (int)dparam;
+      uint mBtn = (uint)StringToInteger(sparam);
+      bool leftBtn = ((mBtn & 1) != 0);
+
+      if(leftBtn)
+      {
+         if(!g_isDragging)
+         {
+            // Cek apakah klik berada di Header Drag Bar
+            int headerW = S(310);
+            int headerH = S(28);
+            if(mx >= g_panelX && mx <= g_panelX + headerW &&
+               my >= g_panelY && my <= g_panelY + headerH)
+            {
+               g_isDragging = true;
+               g_dragOffX = mx - g_panelX;
+               g_dragOffY = my - g_panelY;
+            }
+         }
+         else
+         {
+            // Sedang drag: update posisi panel
+            int newX = mx - g_dragOffX;
+            int newY = my - g_dragOffY;
+
+            // Batasi dalam chart window
+            long chartW = ChartGetInteger(0, CHART_WIDTH_IN_PIXELS);
+            long chartH = ChartGetInteger(0, CHART_HEIGHT_IN_PIXELS);
+
+            if(newX < 0) newX = 0;
+            if(newY < 0) newY = 0;
+            if(newX > (int)chartW - S(100)) newX = (int)chartW - S(100);
+            if(newY > (int)chartH - S(50)) newY = (int)chartH - S(50);
+
+            g_panelX = newX;
+            g_panelY = newY;
+
+            UpdateHUD();
+         }
+      }
+      else
+      {
+         // Mouse dilepas: hentikan drag dan simpan posisi
+         if(g_isDragging)
+         {
+            g_isDragging = false;
+            GlobalVariableSet(VarNameX(), (double)g_panelX);
+            GlobalVariableSet(VarNameY(), (double)g_panelY);
+         }
+      }
+   }
+
+   // 2. Object Click Events
    if(id == CHARTEVENT_OBJECT_CLICK)
    {
-      if(sparam == PREFIX + "BTN_COPY")
+      // A. Tombol Skala Persentase
+      if(sparam == PREFIX + "BTN_SC_M")
+      {
+         g_scale = MathMax(0.75, g_scale - 0.25);
+         GlobalVariableSet(VarNameS(), g_scale);
+         UpdateHUD();
+         ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
+      }
+      else if(sparam == PREFIX + "BTN_SC_R")
+      {
+         g_scale = 1.00;
+         GlobalVariableSet(VarNameS(), g_scale);
+         UpdateHUD();
+         ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
+      }
+      else if(sparam == PREFIX + "BTN_SC_P")
+      {
+         g_scale = MathMin(1.75, g_scale + 0.25);
+         GlobalVariableSet(VarNameS(), g_scale);
+         UpdateHUD();
+         ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
+      }
+      // B. Tombol Copy SL/TP
+      else if(sparam == PREFIX + "BTN_COPY")
       {
          string text = StringFormat("XAUUSD SARAN SL/TP | BUY SL:%.3f TP:%.3f | SELL SL:%.3f TP:%.3f",
                                     g_last_buy_sl, g_last_buy_tp, g_last_sell_sl, g_last_sell_tp);
          Print("📋 [COPY_SLTP]: ", text);
          Alert("📋 NILAI DISALIN KE LOG:\n", text);
-         CreateLabel("ACTION_FEEDBACK", InpXDistance + 12, InpYDistance + 282, "✅ SL/TP dicetak ke Terminal Log", clrAqua, 8, true);
+         CreateLabel("ACTION_FEEDBACK", g_panelX + S(12), g_panelY + S(294), "✅ SL/TP dicetak ke Terminal Log", clrAqua, 8, true);
          ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
          ChartRedraw();
       }
+      // C. Tombol BUY & SELL Action
       else if(sparam == PREFIX + "BTN_BUY")
       {
          Alert("🟢 [BUY CLICKED]: Saran BUY SL: ", g_last_buy_sl, " TP: ", g_last_buy_tp);
-         CreateLabel("ACTION_FEEDBACK", InpXDistance + 12, InpYDistance + 282, "🟢 BUY Triggered (Gunakan Web/EA)", InpAccentGreen, 8, true);
+         CreateLabel("ACTION_FEEDBACK", g_panelX + S(12), g_panelY + S(294), "🟢 BUY Triggered (Gunakan Web/EA)", InpAccentGreen, 8, true);
          ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
          ChartRedraw();
       }
       else if(sparam == PREFIX + "BTN_SELL")
       {
          Alert("🔴 [SELL CLICKED]: Saran SELL SL: ", g_last_sell_sl, " TP: ", g_last_sell_tp);
-         CreateLabel("ACTION_FEEDBACK", InpXDistance + 12, InpYDistance + 282, "🔴 SELL Triggered (Gunakan Web/EA)", InpAccentRed, 8, true);
+         CreateLabel("ACTION_FEEDBACK", g_panelX + S(12), g_panelY + S(294), "🔴 SELL Triggered (Gunakan Web/EA)", InpAccentRed, 8, true);
          ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
          ChartRedraw();
       }
@@ -329,7 +468,8 @@ void OnChartEvent(const int id,
 //+------------------------------------------------------------------+
 void OnTimer()
 {
-   UpdateHUD();
+   if(!g_isDragging)
+      UpdateHUD();
 }
 
 int OnCalculate(const int rates_total,
@@ -343,6 +483,7 @@ int OnCalculate(const int rates_total,
                 const long &volume[],
                 const int &spread[])
 {
-   UpdateHUD();
+   if(!g_isDragging)
+      UpdateHUD();
    return(rates_total);
 }
