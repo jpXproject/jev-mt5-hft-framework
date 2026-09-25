@@ -42,32 +42,40 @@ MAX_HISTORY = 60
 # Active WebSocket connections
 active_connections: List[WebSocket] = []
 
-# Shared telemetry cache
+# Shared telemetry cache (Strict Real-Time AutoSync - No Dummy Data)
 telemetry_state = {
-    "status": "ONLINE",
+    "status": "WAITING_REAL_MT5_SYNC",
     "timestamp": time.time(),
     "snapshot": {
         "symbol": "XAUUSDc",
-        "mid": 4265.50,
-        "vwap": 4262.00,
-        "spread_bps": 0.56,
+        "mid": 0.0,
+        "vwap": 0.0,
+        "spread_bps": 0.0,
         "net_lot": 0.0,
-        "equity": 319.48,
-        "balance": 319.48,
+        "equity": 0.0,
+        "balance": 0.0,
+        "margin": 0.0,
+        "margin_free": 0.0,
         "drawdown_pct": 0.0,
-        "reservation_price": 4265.50
+        "reservation_price": 0.0,
+        "account_login": 0,
+        "account_server": "DISCONNECTED",
+        "account_currency": "USD",
+        "account_leverage": 0,
+        "trade_mode": "UNKNOWN",
+        "is_live_synced": False
     },
     "battery": {
-        "regime": "mean_reverting",
-        "direction": "down",
-        "toxic_flow": "low",
+        "regime": "initializing",
+        "direction": "neutral",
+        "toxic_flow": "unknown",
         "liquidity_stress": "normal",
-        "quote_environment": "favorable",
+        "quote_environment": "waiting_data",
         "inventory_pressure": "balanced",
-        "confidence": 0.82
+        "confidence": 0.0
     },
-    "action": {"action": "SELL", "lot_scale": 1.0, "reason": "Negative momentum"},
-    "latency_ms": 0.8,
+    "action": {"action": "HOLD", "lot_scale": 0.0, "reason": "Menunggu sinkronisasi live akun MT5"},
+    "latency_ms": 0.0,
     "tick_history": []
 }
 
@@ -80,11 +88,27 @@ class MarketSnapshot(BaseModel):
     imbalance: float
     net_lot: float
     equity: float
+    balance: Optional[float] = 0.0
+    margin: Optional[float] = 0.0
+    margin_free: Optional[float] = 0.0
     drawdown_pct: float
+    account_login: Optional[int] = 0
+    account_server: Optional[str] = "DISCONNECTED"
+    account_currency: Optional[str] = "USD"
+    account_leverage: Optional[int] = 0
+    trade_mode: Optional[str] = "UNKNOWN"
 
 @app.get("/")
-def root():
-    return RedirectResponse(url="/dashboard/index.html")
+@app.get("/dashboard")
+@app.get("/dashboard/")
+@app.get("/dashboard/index.html")
+def get_dashboard():
+    html_file = os.path.join(static_dir, "index.html")
+    response = FileResponse(html_file, media_type="text/html")
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 @app.get("/health")
 def health():
@@ -117,16 +141,27 @@ def get_telemetry():
 @app.post("/evaluate")
 async def evaluate(snapshot: MarketSnapshot):
     snap_dict = snapshot.model_dump()
+    snap_dict["is_live_synced"] = True
     start_t = time.time()
     battery = evaluate_market_state(snap_dict)
     action = compose_action(battery, snap_dict)
     latency_ms = (time.time() - start_t) * 1000.0
 
+    telemetry_state["status"] = "LIVE_SYNCED"
     telemetry_state["snapshot"] = snap_dict
     telemetry_state["battery"] = battery
     telemetry_state["action"] = action
     telemetry_state["latency_ms"] = round(latency_ms, 2)
     telemetry_state["timestamp"] = time.time()
+
+    # Save to local and common files if available
+    try:
+        common_path = r"C:\Users\XCODE\AppData\Roaming\MetaQuotes\Terminal\Common\Files\jev_telemetry.json"
+        if os.path.exists(os.path.dirname(common_path)):
+            with open(common_path, "w", encoding="utf-8") as f:
+                json.dump(telemetry_state, f)
+    except Exception:
+        pass
 
     return {
         "status": "success",

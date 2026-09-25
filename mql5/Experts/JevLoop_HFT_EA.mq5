@@ -48,7 +48,7 @@ input double   InpSigma             = 0.02;          // Volatility estimate (sig
 input double   InpTimeHorizon       = 1.0;           // Session Horizon (T - t)
 
 input group "=== AI Bridge Configuration ==="
-input string   InpBridgeUrl         = "http://127.0.0.1:8765/evaluate"; // Localhost AI Bridge URL
+input string   InpBridgeUrl         = "http://127.0.0.1:8765/evaluate"; // AI Bridge Endpoint (Ganti dengan IP VPS Cloud Anda)
 input int      InpEvaluationSec     = 5;             // Evaluation Interval (seconds)
 
 //--- Module instances

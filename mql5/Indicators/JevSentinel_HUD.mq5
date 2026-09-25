@@ -429,15 +429,22 @@ void UpdateHUD()
    string sc_pct = StringFormat("%.0f%%", g_scale * 100.0);
    CreateLabel("TITLE", g_panelX + S(8), g_panelY + S(5), "⚡ JEV SENTINEL [DRAGGABLE]", InpAccentCyan, 9, true);
 
+   // Real Account AutoSync Info Banner
+   string cur_unit = StringSubstr(_Symbol, StringLen(_Symbol)-1, 1) == "c" ? "USC" : "USD";
+   string acc_str = StringFormat("Acc: #%I64d [%s] %s | Saldo: %.2f %s",
+                                 snap.account_login, snap.account_trade_mode, snap.account_server, snap.balance_usd, cur_unit);
+   color acc_clr = (snap.account_trade_mode == "REAL") ? clrSpringGreen : clrGold;
+   CreateLabel("ACC_INFO", g_panelX + S(12), g_panelY + S(34), acc_str, acc_clr, 8, true);
+
    // 2. Price & VWAP
-   string p_str = StringFormat("Mid: %.3f | Spr: %.1f bps", snap.mid_price, snap.spread_bps);
-   CreateLabel("PRICES", g_panelX + S(12), g_panelY + S(36), p_str, InpTextColor, 9);
+   string p_str = StringFormat("Mid: %.3f | Spr: %.1f bps | Eq: %.2f", snap.mid_price, snap.spread_bps, snap.equity_usd);
+   CreateLabel("PRICES", g_panelX + S(12), g_panelY + S(50), p_str, InpTextColor, 8);
 
    string r_str = StringFormat("Reserv.Price: %.3f", r_price);
-   CreateLabel("RESERV", g_panelX + S(12), g_panelY + S(54), r_str, clrGold, 9, true);
+   CreateLabel("RESERV", g_panelX + S(12), g_panelY + S(66), r_str, clrGold, 8, true);
 
    string v_str = StringFormat("Session VWAP: %.3f", snap.session_vwap);
-   CreateLabel("VWAP", g_panelX + S(12), g_panelY + S(72), v_str, clrSilver, 9);
+   CreateLabel("VWAP", g_panelX + S(12), g_panelY + S(82), v_str, clrSilver, 8);
 
    // 3. KEKUATAN BUY vs SELL & PARAMETER MTF (M1, M5, M15, H1)
    string pwr_str = StringFormat("Kekuatan: BUY %.0f%% | SELL %.0f%%", buy_power, sell_power);
@@ -480,8 +487,8 @@ void UpdateHUD()
    string dir_str = StringFormat("ATR: %.3f | Vol Buffer: %.0f pts", atr_val, sl_dist / point);
    CreateLabel("FLOW", g_panelX + S(12), g_panelY + S(270), dir_str, clrLightSlateGray, 8);
 
-   string rec_str = StringFormat("Target: 1,000 USC | Skala: %s", sc_pct);
-   CreateLabel("REC_GOAL", g_panelX + S(12), g_panelY + S(288), rec_str, clrGold, 8, true);
+   string scale_info = StringFormat("Skala Panel: %s", sc_pct);
+   CreateLabel("REC_GOAL", g_panelX + S(12), g_panelY + S(288), scale_info, clrSkyBlue, 8, true);
 
    // 7. Action Feedback Label & Author Brand Legacy
    CreateLabel("ACTION_FEEDBACK", g_panelX + S(12), g_panelY + S(342), "Siap eksekusi / copy", clrDarkGray, 8, false);

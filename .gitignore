@@ -1,8 +1,20 @@
 # Environment & Secrets
 .env
+*.env
+*secret*
+*key*
+*.key
+*.pem
+*.pub
+*telemetry*.json
+*snapshot*.json
 *.log
 __pycache__/
 *.pyc
+
+# VPS Credentials & Configs
+*vps*config*
+*auth*
 
 # OS
 Thumbs.db

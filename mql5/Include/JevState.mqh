@@ -20,7 +20,14 @@ struct SJevSnapshot
    double   net_inventory_usd;
    double   equity_usd;
    double   balance_usd;
+   double   margin_usd;
+   double   margin_free_usd;
    double   drawdown_pct;
+   long     account_login;
+   string   account_server;
+   string   account_currency;
+   long     account_leverage;
+   string   account_trade_mode;
 };
 
 class CJevStateEngine
@@ -97,9 +104,20 @@ public:
       snap.net_inventory_lots = total_long_lot - total_short_lot;
       snap.net_inventory_usd  = snap.net_inventory_lots * snap.mid_price;
 
-      snap.equity_usd  = AccountInfoDouble(ACCOUNT_EQUITY);
-      snap.balance_usd = AccountInfoDouble(ACCOUNT_BALANCE);
-      snap.drawdown_pct = (snap.balance_usd > 0.0) ? ((snap.balance_usd - snap.equity_usd) / snap.balance_usd * 100.0) : 0.0;
+      // Real Account Live Auto-Sync
+      snap.equity_usd       = AccountInfoDouble(ACCOUNT_EQUITY);
+      snap.balance_usd      = AccountInfoDouble(ACCOUNT_BALANCE);
+      snap.margin_usd       = AccountInfoDouble(ACCOUNT_MARGIN);
+      snap.margin_free_usd  = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
+      snap.drawdown_pct     = (snap.balance_usd > 0.0) ? ((snap.balance_usd - snap.equity_usd) / snap.balance_usd * 100.0) : 0.0;
+
+      snap.account_login    = AccountInfoInteger(ACCOUNT_LOGIN);
+      snap.account_server   = AccountInfoString(ACCOUNT_SERVER);
+      snap.account_currency = AccountInfoString(ACCOUNT_CURRENCY);
+      snap.account_leverage = AccountInfoInteger(ACCOUNT_LEVERAGE);
+
+      long trade_mode = AccountInfoInteger(ACCOUNT_TRADE_MODE);
+      snap.account_trade_mode = (trade_mode == ACCOUNT_TRADE_MODE_REAL) ? "REAL" : ((trade_mode == ACCOUNT_TRADE_MODE_DEMO) ? "DEMO" : "CONTEST");
 
       return true;
    }
@@ -107,8 +125,8 @@ public:
    string ToJson(const SJevSnapshot &snap)
    {
       string json = StringFormat(
-         "{\"as_of\":%d,\"symbol\":\"%s\",\"mid\":%.5f,\"spread_bps\":%.2f,\"vwap\":%.5f,\"imbalance\":%.2f,\"net_lot\":%.2f,\"equity\":%.2f,\"drawdown_pct\":%.2f}",
-         snap.as_of, m_symbol, snap.mid_price, snap.spread_bps, snap.session_vwap, snap.tick_imbalance, snap.net_inventory_lots, snap.equity_usd, snap.drawdown_pct
+         "{\"as_of\":%d,\"symbol\":\"%s\",\"mid\":%.5f,\"spread_bps\":%.2f,\"vwap\":%.5f,\"imbalance\":%.2f,\"net_lot\":%.2f,\"equity\":%.2f,\"balance\":%.2f,\"margin\":%.2f,\"margin_free\":%.2f,\"drawdown_pct\":%.2f,\"account_login\":%I64d,\"account_server\":\"%s\",\"account_currency\":\"%s\",\"account_leverage\":%d,\"trade_mode\":\"%s\"}",
+         snap.as_of, m_symbol, snap.mid_price, snap.spread_bps, snap.session_vwap, snap.tick_imbalance, snap.net_inventory_lots, snap.equity_usd, snap.balance_usd, snap.margin_usd, snap.margin_free_usd, snap.drawdown_pct, snap.account_login, snap.account_server, snap.account_currency, snap.account_leverage, snap.account_trade_mode
       );
       return json;
    }

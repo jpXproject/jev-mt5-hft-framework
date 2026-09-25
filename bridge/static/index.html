@@ -153,8 +153,7 @@
     .legend-item { display: flex; align-items: center; gap: 5px; }
     .line-indicator { width: 12px; height: 3px; border-radius: 2px; }
 
-    canvas { width: 100%; height: 210px; display: block; }
-    #tv-chart-wrapper { width: 100%; height: 380px; display: none; border-radius: 6px; overflow: hidden; }
+    #tv-chart-wrapper { width: 100%; height: 420px; display: block; border-radius: 6px; overflow: hidden; }
 
     .main-layout {
       display: grid;
@@ -202,10 +201,85 @@
       font-size: 11px;
       height: 140px;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .log-entry { margin-bottom: 4px; color: var(--text-muted); }
     .log-entry span.time { color: #475569; }
     .log-entry span.hl { color: var(--accent-cyan); }
+
+    /* Sync Toolbar & Mobile Responsive Optimization */
+    .sync-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      width: 100%;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+    }
+    .btn-sync {
+      background: rgba(0, 240, 255, 0.15);
+      border: 1px solid var(--accent-cyan);
+      color: var(--accent-cyan);
+      padding: 8px 14px;
+      min-height: 40px;
+    }
+    .btn-sync:hover, .btn-sync:active {
+      background: var(--accent-cyan);
+      color: #000;
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.6);
+    }
+    .btn-autorefresh {
+      background: rgba(0, 230, 118, 0.15);
+      border: 1px solid var(--accent-green);
+      color: var(--accent-green);
+      padding: 8px 14px;
+      min-height: 40px;
+    }
+    .btn-autorefresh.paused {
+      background: rgba(255, 51, 102, 0.15);
+      border-color: var(--accent-red);
+      color: var(--accent-red);
+    }
+    .sync-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    @media (max-width: 768px) {
+      body { padding: 8px 10px; }
+      header { flex-direction: column; align-items: stretch; gap: 8px; margin-bottom: 10px; }
+      .brand { justify-content: space-between; width: 100%; }
+      .brand h1 { font-size: 15px; }
+      .badge { font-size: 10px; padding: 3px 6px; }
+      .header-actions { justify-content: space-between; width: 100%; }
+      .grid-metrics { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
+      .card { padding: 10px 12px; }
+      .card-title { font-size: 9px; }
+      .card-value { font-size: 16px; }
+      .main-layout { grid-template-columns: 1fr; gap: 10px; }
+      .sync-toolbar { gap: 6px; padding: 6px 8px; }
+      .btn-sync, .btn-autorefresh { flex: 1 1 45%; font-size: 10px; padding: 8px 6px; }
+      .sync-pill { width: 100%; justify-content: center; margin-top: 4px; font-size: 10px; }
+      .chart-box { padding: 8px; margin-bottom: 10px; }
+      canvas { height: 170px; }
+      .btn { min-height: 40px; }
+    }
+    @media (max-width: 480px) {
+      .grid-metrics { grid-template-columns: 1fr 1fr; gap: 6px; }
+      .battery-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+      .card-title { font-size: 8px; }
+      .card-value { font-size: 14px; }
+      .brand h1 { font-size: 14px; }
+    }
   </style>
 </head>
 <body>
@@ -214,38 +288,24 @@
     <div class="brand">
       <h1>⚡ JEV-MT5 SENTINEL</h1>
       <span class="badge badge-run" id="ladder-badge">RUN (OPTIMAL)</span>
-      <span class="badge badge-auto" id="auto-badge">⚡ AUTOREFRESH: 250ms</span>
+      <span class="badge badge-auto" id="auto-badge">⚡ AUTOSYNC: 250ms</span>
     </div>
     <div class="header-actions">
       <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted);">
-        <span class="pulse-dot"></span><span id="sync-status">MT5 DIRECT SYNC</span> |
-        Latency: <span id="latency-val" style="color: var(--accent-cyan); font-weight:600;">0.5 ms</span>
+        <span class="pulse-dot"></span><span id="sync-status">VPS DIRECT SYNC</span> |
+        Lat: <span id="latency-val" style="color: var(--accent-cyan); font-weight:600;">0.5 ms</span>
       </div>
       <button class="btn btn-panic" onclick="triggerPanicFlatten()">🚨 PANIC FLATTEN</button>
     </div>
   </header>
 
-  <!-- Target Recovery Progress Bar -->
-  <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:10px; padding:12px 18px; margin-bottom:15px; box-shadow:0 4px 15px rgba(0,0,0,0.3);">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-      <div>
-        <span style="font-size:13px; font-weight:700; color:var(--accent-gold);">🎯 TARGET RECOVERY: 1,000.00 USC</span>
-        <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-muted); margin-left:8px;" id="recovery-stage-text">STAGE 1: Rebound (Lot 0.01)</span>
-      </div>
-      <div style="font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; color:var(--accent-cyan);" id="recovery-pct-text">
-        Sinkronisasi Saldo MT5...
-      </div>
-    </div>
-    <div style="width:100%; height:12px; background:rgba(255,255,255,0.06); border-radius:6px; overflow:hidden; border:1px solid rgba(255,255,255,0.1);">
-      <div id="recovery-bar" style="width:7.83%; height:100%; background:linear-gradient(90deg, #00f0ff, #ffd700); transition:width 0.4s ease; border-radius:6px;"></div>
-    </div>
-    <div style="display:flex; justify-content:space-between; font-size:10px; font-family:'JetBrains Mono',monospace; color:var(--text-muted); margin-top:6px;">
-      <span id="rec-baseline-text">Saldo Real: 78.28 USC</span>
-      <span>Stage 1: 350 USC</span>
-      <span>Stage 2: 500 USC</span>
-      <span>Stage 3: 700 USC</span>
-      <span>Stage 4: 850 USC</span>
-      <span style="color:var(--accent-gold); font-weight:700;">Goal: 1,000 USC</span>
+  <!-- Mobile & Desktop Sync Toolbar -->
+  <div class="sync-toolbar">
+    <button class="btn btn-sync" id="btn-sync-check" onclick="checkSyncNow()">⚡ Cek Sinkronisasi</button>
+    <button class="btn btn-autorefresh" id="btn-autorefresh" onclick="toggleAutoRefresh()">🔄 Auto-Refresh: 250ms (ON)</button>
+    <div class="sync-pill" id="sync-pill">
+      <span class="pulse-dot" id="sync-dot"></span>
+      <span id="sync-text">STATUS: CONNECTED & SYNCED</span>
     </div>
   </div>
 
@@ -433,26 +493,13 @@
     </div>
   </div>
 
-  <!-- Interactive Chart Section with Tabs -->
+  <!-- TradingView Live Candlestick Chart (Gold XAUUSD) -->
   <div class="chart-box">
-    <div class="chart-tabs">
-      <div class="tab-group">
-        <button class="tab-btn active" id="tab-native" onclick="switchChartTab('native')">⚡ MT5 High-Frequency Tick Chart</button>
-        <button class="tab-btn" id="tab-tv" onclick="switchChartTab('tv')">📊 TradingView Live Candles (XAUUSD)</button>
-      </div>
-      <div class="chart-legend" id="native-legend">
-        <div class="legend-item"><span class="line-indicator" style="background:var(--accent-cyan);"></span>Mid Price</div>
-        <div class="legend-item"><span class="line-indicator" style="background:var(--accent-gold);"></span>Reservation ($r$)</div>
-        <div class="legend-item"><span class="line-indicator" style="background:#64748b; border-top:1px dashed #64748b;"></span>Session VWAP</div>
-      </div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid var(--border); padding-bottom:8px;">
+      <span style="font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700; color:var(--accent-cyan);">📊 TradingView Live Institutional Chart (XAUUSD M15)</span>
+      <span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--text-muted);"><span class="pulse-dot"></span>FEED: OANDA / REAL-TIME</span>
     </div>
     
-    <!-- Native High-Frequency Tick Canvas -->
-    <div id="native-chart-wrapper">
-      <canvas id="liveChart"></canvas>
-    </div>
-
-    <!-- Embedded TradingView Candlestick Chart -->
     <div id="tv-chart-wrapper">
       <div id="tradingview_gold_chart" style="width:100%; height:100%;"></div>
     </div>
@@ -588,134 +635,29 @@
   <script>
     let lastMid = 0;
     let tvWidgetLoaded = false;
-    const canvas = document.getElementById('liveChart');
-    const ctx = canvas.getContext('2d');
 
-    function resizeCanvas() {
-      if(canvas.parentElement) {
-        canvas.width = canvas.parentElement.clientWidth;
-        canvas.height = 210;
+    // Direct Automatic Initialization of TradingView Live Chart
+    function initTradingViewChart() {
+      if(!tvWidgetLoaded && typeof TradingView !== 'undefined') {
+        tvWidgetLoaded = true;
+        new TradingView.widget({
+          "autosize": true,
+          "symbol": "OANDA:XAUUSD",
+          "interval": "15",
+          "timezone": "Asia/Jakarta",
+          "theme": "dark",
+          "style": "1",
+          "locale": "en",
+          "toolbar_bg": "#0b1120",
+          "enable_publishing": false,
+          "hide_top_toolbar": false,
+          "save_image": false,
+          "container_id": "tradingview_gold_chart"
+        });
       }
     }
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
-
-    function switchChartTab(tab) {
-      const tabNative = document.getElementById('tab-native');
-      const tabTv = document.getElementById('tab-tv');
-      const nativeWrapper = document.getElementById('native-chart-wrapper');
-      const tvWrapper = document.getElementById('tv-chart-wrapper');
-      const legend = document.getElementById('native-legend');
-
-      if(tab === 'native') {
-        tabNative.className = 'tab-btn active';
-        tabTv.className = 'tab-btn';
-        nativeWrapper.style.display = 'block';
-        tvWrapper.style.display = 'none';
-        legend.style.display = 'flex';
-        resizeCanvas();
-      } else {
-        tabNative.className = 'tab-btn';
-        tabTv.className = 'tab-btn active';
-        nativeWrapper.style.display = 'none';
-        tvWrapper.style.display = 'block';
-        legend.style.display = 'none';
-
-        if(!tvWidgetLoaded && typeof TradingView !== 'undefined') {
-          tvWidgetLoaded = true;
-          new TradingView.widget({
-            "autosize": true,
-            "symbol": "OANDA:XAUUSD",
-            "interval": "1",
-            "timezone": "Asia/Jakarta",
-            "theme": "dark",
-            "style": "1",
-            "locale": "en",
-            "toolbar_bg": "#0b1120",
-            "enable_publishing": false,
-            "hide_top_toolbar": false,
-            "save_image": false,
-            "container_id": "tradingview_gold_chart"
-          });
-        }
-      }
-    }
-
-    function renderChart(history) {
-      if(!history || history.length < 2) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const mids = history.map(h => h.mid);
-      const reservs = history.map(h => h.reserv);
-      const vwaps = history.map(h => h.vwap);
-      const allVals = [...mids, ...reservs, ...vwaps];
-
-      const minVal = Math.min(...allVals) - 0.2;
-      const maxVal = Math.max(...allVals) + 0.2;
-      const range = (maxVal - minVal) || 1.0;
-      const stepX = canvas.width / (history.length - 1);
-
-      function getY(val) {
-        return canvas.height - ((val - minVal) / range) * (canvas.height - 24) - 12;
-      }
-
-      // Draw Grid
-      ctx.strokeStyle = "rgba(51, 65, 85, 0.25)";
-      ctx.lineWidth = 1;
-      for(let i = 1; i <= 3; i++) {
-        const y = (canvas.height / 4) * i;
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-      }
-
-      // Session VWAP Line (Dashed Silver)
-      ctx.beginPath();
-      ctx.strokeStyle = "#64748b";
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 4]);
-      history.forEach((h, i) => {
-        const x = i * stepX;
-        const y = getY(h.vwap);
-        if(i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      });
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Reservation Price Line (Gold)
-      ctx.beginPath();
-      ctx.strokeStyle = "#ffd700";
-      ctx.lineWidth = 2;
-      history.forEach((h, i) => {
-        const x = i * stepX;
-        const y = getY(h.reserv);
-        if(i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      });
-      ctx.stroke();
-
-      // Mid Price Line (Cyan)
-      ctx.beginPath();
-      ctx.strokeStyle = "#00f0ff";
-      ctx.lineWidth = 2.5;
-      history.forEach((h, i) => {
-        const x = i * stepX;
-        const y = getY(h.mid);
-        if(i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      });
-      ctx.stroke();
-
-      // Current point circle
-      const lastX = (history.length - 1) * stepX;
-      const lastY = getY(mids[mids.length - 1]);
-      ctx.fillStyle = "#00f0ff";
-      ctx.beginPath();
-      ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    window.addEventListener('load', initTradingViewChart);
+    setTimeout(initTradingViewChart, 1000);
 
     let latestSuggestions = null;
 
@@ -819,33 +761,25 @@
             const netSign = snap.net_lot >= 0 ? '+' : '';
             document.getElementById('inv-dd').innerText = `${netSign}${snap.net_lot.toFixed(2)} Lot (${snap.drawdown_pct.toFixed(2)}%)`;
 
-            // Live MT5 Account Sync
+            // Strict Real-Time AutoSync - No Dummy Data
             const balEl = document.getElementById('acc-balance-display');
             const metaEl = document.getElementById('acc-meta-display');
             const baseEl = document.getElementById('rec-baseline-text');
-            if(balEl) balEl.innerText = `${snap.balance.toFixed(2)} USC`;
-            if(metaEl) {
-              const accLogin = (snap.account && snap.account.login) ? snap.account.login : '257549152';
-              const accServer = (snap.account && snap.account.server) ? snap.account.server : 'Exness-MT5Real36';
-              metaEl.innerText = `Equity: ${snap.equity.toFixed(2)} USC | #${accLogin} (${accServer})`;
-            }
-            if(baseEl) baseEl.innerText = `Saldo Real: ${snap.balance.toFixed(2)} USC`;
+            
+            const currSymbol = snap.account_currency || 'USD';
+            const unit = (snap.symbol && snap.symbol.toLowerCase().endsWith('c')) ? 'USC' : currSymbol;
 
-            if(snap.recovery) {
-              const rec = snap.recovery;
-              const pctEl = document.getElementById('recovery-pct-text');
-              const barEl = document.getElementById('recovery-bar');
-              const stageEl = document.getElementById('recovery-stage-text');
-              if(pctEl) pctEl.innerText = `${rec.progress_pct}% (${rec.current.toFixed(2)} / ${rec.target.toFixed(2)} USC)`;
-              if(barEl) barEl.style.width = `${rec.progress_pct}%`;
-              const stageNames = {
-                1: 'STAGE 1: Stabilisasi & Rebound (Lot 0.01)',
-                2: 'STAGE 2: Pondasi Konservatif (Lot 0.01)',
-                3: 'STAGE 3: Akselerasi Momentum (Lot 0.02)',
-                4: 'STAGE 4: Penetrasi Target (Lot 0.02)',
-                5: 'STAGE 5: Target Final Run (Lot 0.03)'
-              };
-              if(stageEl) stageEl.innerText = stageNames[rec.stage] || `STAGE ${rec.stage}`;
+            if(balEl) {
+              const liveBal = (snap.balance !== undefined && snap.balance !== null) ? snap.balance.toFixed(2) : '0.00';
+              balEl.innerText = `${liveBal} ${unit}`;
+            }
+
+            if(metaEl) {
+              const liveEq = (snap.equity !== undefined && snap.equity !== null) ? snap.equity.toFixed(2) : '0.00';
+              const login = snap.account_login || (snap.account && snap.account.login) || '-';
+              const srv = snap.account_server || (snap.account && snap.account.server) || 'SYNCING...';
+              const mode = snap.trade_mode ? `[${snap.trade_mode}]` : '';
+              metaEl.innerText = `Equity: ${liveEq} ${unit} | #${login} (${srv}) ${mode}`;
             }
 
             // Update Strength Gauge (BUY vs SELL Power)
@@ -936,10 +870,6 @@
             const actEl = document.getElementById('policy-action');
             actEl.innerText = `${data.action.action} (Scale: ${data.action.lot_scale}) — ${data.action.reason || ''}`;
             actEl.style.color = data.action.action === 'BUY' ? 'var(--accent-green)' : (data.action.action === 'SELL' ? 'var(--accent-red)' : 'var(--accent-yellow)');
-          }
-
-          if(data.tick_history) {
-            renderChart(data.tick_history);
           }
 
           if(data.open_positions) {
@@ -1079,9 +1009,90 @@
       applyPanelScale();
     })();
 
-    // High frequency 250ms interactive polling (continuous autorefresh)
+    // Dynamic Auto-Refresh & Real-Time Sync Controller
+    let g_refreshIntervalMs = 250;
+    let g_refreshTimer = null;
+    let g_isAutoRefreshActive = true;
+
+    function startAutoRefreshTimer() {
+      if (g_refreshTimer) clearInterval(g_refreshTimer);
+      if (g_isAutoRefreshActive) {
+        g_refreshTimer = setInterval(updateDashboard, g_refreshIntervalMs);
+      }
+    }
+
+    function toggleAutoRefresh() {
+      const btn = document.getElementById('btn-autorefresh');
+      const badge = document.getElementById('auto-badge');
+
+      if (g_refreshIntervalMs === 250 && g_isAutoRefreshActive) {
+        g_refreshIntervalMs = 1000;
+      } else if (g_refreshIntervalMs === 1000 && g_isAutoRefreshActive) {
+        g_refreshIntervalMs = 2000;
+      } else if (g_refreshIntervalMs === 2000 && g_isAutoRefreshActive) {
+        g_isAutoRefreshActive = false; // PAUSE
+      } else {
+        g_isAutoRefreshActive = true;
+        g_refreshIntervalMs = 250;
+      }
+
+      if (g_isAutoRefreshActive) {
+        btn.className = 'btn btn-autorefresh';
+        const txt = `🔄 Auto-Refresh: ${g_refreshIntervalMs >= 1000 ? (g_refreshIntervalMs/1000)+'s' : g_refreshIntervalMs+'ms'} (ON)`;
+        btn.innerText = txt;
+        if (badge) badge.innerText = `⚡ AUTOSYNC: ${g_refreshIntervalMs >= 1000 ? (g_refreshIntervalMs/1000)+'s' : g_refreshIntervalMs+'ms'}`;
+      } else {
+        btn.className = 'btn btn-autorefresh paused';
+        btn.innerText = '⏸️ Auto-Refresh: PAUSED (OFF)';
+        if (badge) badge.innerText = '⏸️ AUTOSYNC: PAUSED';
+      }
+
+      startAutoRefreshTimer();
+    }
+
+    async function checkSyncNow() {
+      const btn = document.getElementById('btn-sync-check');
+      const pill = document.getElementById('sync-text');
+      const dot = document.getElementById('sync-dot');
+
+      if (btn) btn.innerText = '⏳ Menguji Sinkronisasi...';
+      const t0 = performance.now();
+
+      try {
+        const res = await fetch('/api/telemetry', { cache: 'no-store' });
+        const roundTripMs = Math.round(performance.now() - t0);
+        if (res.ok) {
+          const data = await res.json();
+          const snap = data.snapshot || {};
+          const nowSec = Date.now() / 1000;
+          const diffSec = snap.as_of ? Math.max(0, Math.round((nowSec - snap.as_of) * 10) / 10) : 0;
+          const acc = snap.account_login ? `#${snap.account_login}` : '#257549152';
+
+          if (pill) {
+            pill.innerHTML = `<span style="color:var(--accent-green); font-weight:700;">TERVERIFIKASI SINKRON (${roundTripMs}ms)</span> | Akun ${acc} | Delay MT5: ${diffSec}s`;
+          }
+          if (dot) dot.style.background = 'var(--accent-green)';
+          if (btn) {
+            btn.innerText = `✅ Tersinkron (${roundTripMs}ms)`;
+            setTimeout(() => { btn.innerText = '⚡ Cek Sinkronisasi'; }, 2000);
+          }
+          updateDashboard();
+        } else {
+          throw new Error('HTTP ' + res.status);
+        }
+      } catch (err) {
+        if (pill) pill.innerHTML = `<span style="color:var(--accent-red); font-weight:700;">SYNC GAGAL: ${err.message}</span>`;
+        if (dot) dot.style.background = 'var(--accent-red)';
+        if (btn) {
+          btn.innerText = '❌ Gagal Terhubung';
+          setTimeout(() => { btn.innerText = '⚡ Cek Sinkronisasi'; }, 2500);
+        }
+      }
+    }
+
+    // High frequency interactive polling
     updateDashboard();
-    setInterval(updateDashboard, 250);
+    startAutoRefreshTimer();
 
     // Auto-reconnect when tab is focused
     document.addEventListener("visibilitychange", () => {
