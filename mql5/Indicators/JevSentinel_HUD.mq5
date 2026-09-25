@@ -17,6 +17,8 @@
 input group "=== HUD Position & Default Styling ==="
 input int      InpXDistance         = 20;            // X Default Distance
 input int      InpYDistance         = 30;            // Y Default Distance
+input int      InpPanelWidth        = 380;           // Lebar Panel HUD (px)
+input int      InpPanelHeight       = 425;           // Tinggi Panel HUD (px)
 input double   InpDefaultScale      = 1.00;          // Skala Panel Default (1.0 = 100%)
 input color    InpBgColor           = C'12,18,30';   // Panel Background Color
 input color    InpBorderColor       = C'43,62,97';   // Panel Border Color
@@ -161,6 +163,9 @@ void CreateButton(const string name, int x, int y, int width, int height, string
 //+------------------------------------------------------------------+
 void CreatePanel()
 {
+   int pWidth = S(InpPanelWidth);
+   int pHeight = S(InpPanelHeight);
+
    string bgName = PREFIX + "BG";
    if(ObjectFind(0, bgName) < 0)
    {
@@ -171,8 +176,8 @@ void CreatePanel()
    }
    ObjectSetInteger(0, bgName, OBJPROP_XDISTANCE, g_panelX);
    ObjectSetInteger(0, bgName, OBJPROP_YDISTANCE, g_panelY);
-   ObjectSetInteger(0, bgName, OBJPROP_XSIZE, S(310));
-   ObjectSetInteger(0, bgName, OBJPROP_YSIZE, S(435));
+   ObjectSetInteger(0, bgName, OBJPROP_XSIZE, pWidth);
+   ObjectSetInteger(0, bgName, OBJPROP_YSIZE, pHeight);
    ObjectSetInteger(0, bgName, OBJPROP_BGCOLOR, InpBgColor);
    ObjectSetInteger(0, bgName, OBJPROP_BORDER_COLOR, InpBorderColor);
 
@@ -187,20 +192,23 @@ void CreatePanel()
    }
    ObjectSetInteger(0, headerName, OBJPROP_XDISTANCE, g_panelX);
    ObjectSetInteger(0, headerName, OBJPROP_YDISTANCE, g_panelY);
-   ObjectSetInteger(0, headerName, OBJPROP_XSIZE, S(310));
+   ObjectSetInteger(0, headerName, OBJPROP_XSIZE, pWidth);
    ObjectSetInteger(0, headerName, OBJPROP_YSIZE, S(28));
    ObjectSetInteger(0, headerName, OBJPROP_BGCOLOR, C'20,30,50');
    ObjectSetInteger(0, headerName, OBJPROP_BORDER_COLOR, InpBorderColor);
 
    // Percentage Scale Resize Buttons on Title Bar
-   CreateButton("BTN_SC_M", g_panelX + S(200), g_panelY + S(3), S(32), S(22), "-25%", C'35,45,65', clrAqua, 7);
-   CreateButton("BTN_SC_R", g_panelX + S(234), g_panelY + S(3), S(38), S(22), "100%", C'35,45,65', clrWhite, 7);
-   CreateButton("BTN_SC_P", g_panelX + S(274), g_panelY + S(3), S(32), S(22), "+25%", C'35,45,65', clrAqua, 7);
+   CreateButton("BTN_SC_M", g_panelX + S(260), g_panelY + S(3), S(34), S(22), "-25%", C'35,45,65', clrAqua, 7);
+   CreateButton("BTN_SC_R", g_panelX + S(298), g_panelY + S(3), S(38), S(22), "100%", C'35,45,65', clrWhite, 7);
+   CreateButton("BTN_SC_P", g_panelX + S(340), g_panelY + S(3), S(34), S(22), "+25%", C'35,45,65', clrAqua, 7);
 
-   // Interactive Execution & Action Buttons (Repositioned to Y+308)
-   CreateButton("BTN_BUY", g_panelX + S(12), g_panelY + S(308), S(90), S(28), "BUY 0.01", C'5,150,105', clrWhite, 8);
-   CreateButton("BTN_SELL", g_panelX + S(108), g_panelY + S(308), S(90), S(28), "SELL 0.01", C'220,38,38', clrWhite, 8);
-   CreateButton("BTN_COPY", g_panelX + S(204), g_panelY + S(308), S(94), S(28), "COPY SL/TP", C'30,58,138', clrWhite, 8);
+   // Interactive Execution & Action Buttons (Repositioned to Y+322)
+   int btnW = S(112);
+   int btnH = S(28);
+   int btnY = g_panelY + S(322);
+   CreateButton("BTN_BUY", g_panelX + S(14), btnY, btnW, btnH, "BUY 0.01", C'5,150,105', clrWhite, 8);
+   CreateButton("BTN_SELL", g_panelX + S(134), btnY, btnW, btnH, "SELL 0.01", C'220,38,38', clrWhite, 8);
+   CreateButton("BTN_COPY", g_panelX + S(254), btnY, btnW, btnH, "COPY SL/TP", C'30,58,138', clrWhite, 8);
 }
 
 //+------------------------------------------------------------------+
@@ -427,44 +435,46 @@ void UpdateHUD()
 
    // 1. Header (Title + Drag Hint)
    string sc_pct = StringFormat("%.0f%%", g_scale * 100.0);
-   CreateLabel("TITLE", g_panelX + S(8), g_panelY + S(5), "⚡ JEV SENTINEL [DRAGGABLE]", InpAccentCyan, 9, true);
+   CreateLabel("TITLE", g_panelX + S(10), g_panelY + S(5), "⚡ JEV SENTINEL HUD", InpAccentCyan, 9, true);
 
-   // Real Account AutoSync Info Banner
+   // Real Account AutoSync Info Banner (split in 2 lines for perfect margin)
    string cur_unit = StringSubstr(_Symbol, StringLen(_Symbol)-1, 1) == "c" ? "USC" : "USD";
-   string acc_str = StringFormat("Acc: #%I64d [%s] %s | Saldo: %.2f %s",
-                                 snap.account_login, snap.account_trade_mode, snap.account_server, snap.balance_usd, cur_unit);
+   string acc_str = StringFormat("Akun: #%I64d [%s] | %s", snap.account_login, snap.account_trade_mode, snap.account_server);
    color acc_clr = (snap.account_trade_mode == "REAL") ? clrSpringGreen : clrGold;
-   CreateLabel("ACC_INFO", g_panelX + S(12), g_panelY + S(34), acc_str, acc_clr, 8, true);
+   CreateLabel("ACC_INFO", g_panelX + S(14), g_panelY + S(34), acc_str, acc_clr, 8, true);
 
-   // 2. Price & VWAP
-   string p_str = StringFormat("Mid: %.3f | Spr: %.1f bps | Eq: %.2f", snap.mid_price, snap.spread_bps, snap.equity_usd);
-   CreateLabel("PRICES", g_panelX + S(12), g_panelY + S(50), p_str, InpTextColor, 8);
+   string bal_str = StringFormat("Saldo: %.2f %s | Eq: %.2f | DD: %.1f%%", snap.balance_usd, cur_unit, snap.equity_usd, snap.drawdown_pct);
+   CreateLabel("BAL_INFO", g_panelX + S(14), g_panelY + S(50), bal_str, InpTextColor, 8);
 
-   string r_str = StringFormat("Reserv.Price: %.3f", r_price);
-   CreateLabel("RESERV", g_panelX + S(12), g_panelY + S(66), r_str, clrGold, 8, true);
+   // 2. Price & Market State
+   string p_str = StringFormat("Mid: %.3f | Spr: %.1f bps | VWAP: %.3f", snap.mid_price, snap.spread_bps, snap.session_vwap);
+   CreateLabel("PRICES", g_panelX + S(14), g_panelY + S(68), p_str, clrSilver, 8);
 
-   string v_str = StringFormat("Session VWAP: %.3f", snap.session_vwap);
-   CreateLabel("VWAP", g_panelX + S(12), g_panelY + S(82), v_str, clrSilver, 8);
+   string r_str = StringFormat("Reserv.Price: %.3f (Inventory Skew)", r_price);
+   CreateLabel("RESERV", g_panelX + S(14), g_panelY + S(84), r_str, clrGold, 8, true);
+
+   // Clean up legacy separate VWAP label if present
+   ObjectDelete(0, PREFIX + "VWAP");
 
    // 3. KEKUATAN BUY vs SELL & PARAMETER MTF (M1, M5, M15, H1)
-   string pwr_str = StringFormat("Kekuatan: BUY %.0f%% | SELL %.0f%%", buy_power, sell_power);
+   string pwr_str = StringFormat("Kekuatan: BUY %.0f%% | SELL %.0f%% [%s]", buy_power, sell_power, (buy_power >= 50.0 ? "BULL" : "BEAR"));
    color pwr_color = buy_power >= 50.0 ? InpAccentGreen : InpAccentRed;
-   CreateLabel("POWER", g_panelX + S(12), g_panelY + S(90), pwr_str, pwr_color, 9, true);
+   CreateLabel("POWER", g_panelX + S(14), g_panelY + S(104), pwr_str, pwr_color, 9, true);
 
-   string mtf_str = StringFormat("MTF: M1[%.0f%%] M5[%.0f%%] M15[%.0f%%] H1[%.0f%%]", m1_p, m5_p, m15_p, h1_p);
-   CreateLabel("MTF_POWER", g_panelX + S(12), g_panelY + S(108), mtf_str, clrSkyBlue, 8, true);
+   string mtf_str = StringFormat("MTF: M1[%.0f%%]  M5[%.0f%%]  M15[%.0f%%]  H1[%.0f%%]", m1_p, m5_p, m15_p, h1_p);
+   CreateLabel("MTF_POWER", g_panelX + S(14), g_panelY + S(122), mtf_str, clrSkyBlue, 8, true);
 
    // 4. SARAN SL & TP SECTION
-   CreateLabel("SEP", g_panelX + S(12), g_panelY + S(126), "── SARAN SL / TP (AI QUANT) ──", clrGray, 8, true);
+   CreateLabel("SEP", g_panelX + S(14), g_panelY + S(142), "──────── SARAN SL / TP (AI QUANT) ────────", clrGray, 8, true);
 
-   string buy_str = StringFormat("🟢 BUY  SL: %.3f | TP: %.3f", buy_sl, buy_tp);
-   CreateLabel("SUGG_BUY", g_panelX + S(12), g_panelY + S(144), buy_str, InpAccentGreen, 9, is_bullish);
+   string buy_str = StringFormat("🟢 BUY  SL: %.3f  |  TP: %.3f", buy_sl, buy_tp);
+   CreateLabel("SUGG_BUY", g_panelX + S(14), g_panelY + S(160), buy_str, InpAccentGreen, 9, is_bullish);
 
-   string sell_str = StringFormat("🔴 SELL SL: %.3f | TP: %.3f", sell_sl, sell_tp);
-   CreateLabel("SUGG_SELL", g_panelX + S(12), g_panelY + S(162), sell_str, InpAccentRed, 9, !is_bullish);
+   string sell_str = StringFormat("🔴 SELL SL: %.3f  |  TP: %.3f", sell_sl, sell_tp);
+   CreateLabel("SUGG_SELL", g_panelX + S(14), g_panelY + S(178), sell_str, InpAccentRed, 9, !is_bullish);
 
    string bias_str = StringFormat("🎯 Bias: %s (R:R 1:2.13)", dominant_bias);
-   CreateLabel("BIAS", g_panelX + S(12), g_panelY + S(182), bias_str, bias_color, 9, true);
+   CreateLabel("BIAS", g_panelX + S(14), g_panelY + S(198), bias_str, bias_color, 9, true);
 
    // 5. TOP 3 TOOLS SECTION: Order Flow POC & SMC FVG
    double poc_level = CalcPOC(24);
@@ -472,28 +482,28 @@ void UpdateHUD()
    string fvg_status = DetectFVG(PERIOD_M15, gap_top, gap_bottom);
    color fvg_clr = (fvg_status == "BULLISH GAP") ? InpAccentGreen : ((fvg_status == "BEARISH GAP") ? InpAccentRed : clrSilver);
 
-   CreateLabel("SEP2", g_panelX + S(12), g_panelY + S(200), "── TOP 3 QUANT UTILITY TOOLS ──", clrGray, 8, true);
+   CreateLabel("SEP2", g_panelX + S(14), g_panelY + S(218), "─────── TOP 3 QUANT UTILITY TOOLS ───────", clrGray, 8, true);
    
-   string poc_str = StringFormat("1. POC (Vol Profile): %.3f", (poc_level > 0.0 ? poc_level : snap.mid_price));
-   CreateLabel("TOOL_POC", g_panelX + S(12), g_panelY + S(216), poc_str, clrPlum, 8, true);
+   string poc_str = StringFormat("1. Order Flow POC  : %.3f", (poc_level > 0.0 ? poc_level : snap.mid_price));
+   CreateLabel("TOOL_POC", g_panelX + S(14), g_panelY + S(234), poc_str, clrPlum, 8, true);
 
-   string fvg_str = StringFormat("2. SMC FVG (M15): %s", fvg_status);
-   CreateLabel("TOOL_FVG", g_panelX + S(12), g_panelY + S(234), fvg_str, fvg_clr, 8, true);
+   string fvg_str = StringFormat("2. SMC FVG (M15)   : %s", fvg_status);
+   CreateLabel("TOOL_FVG", g_panelX + S(14), g_panelY + S(252), fvg_str, fvg_clr, 8, true);
 
-   string tm_str = "3. Auto-BE & Partial TP: AKTIF (50% Lock)";
-   CreateLabel("TOOL_TM", g_panelX + S(12), g_panelY + S(252), tm_str, clrAqua, 8, true);
+   string tm_str = "3. Auto-BE & Lock  : AKTIF (Partial 50%)";
+   CreateLabel("TOOL_TM", g_panelX + S(14), g_panelY + S(270), tm_str, clrAqua, 8, true);
 
-   // 6. Battery & Volatility
+   // 6. Volatility & Status
    string dir_str = StringFormat("ATR: %.3f | Vol Buffer: %.0f pts", atr_val, sl_dist / point);
-   CreateLabel("FLOW", g_panelX + S(12), g_panelY + S(270), dir_str, clrLightSlateGray, 8);
+   CreateLabel("FLOW", g_panelX + S(14), g_panelY + S(288), dir_str, clrLightSlateGray, 8);
 
-   string scale_info = StringFormat("Skala Panel: %s", sc_pct);
-   CreateLabel("REC_GOAL", g_panelX + S(12), g_panelY + S(288), scale_info, clrSkyBlue, 8, true);
+   string scale_info = StringFormat("Status: AUTO-SYNCED | Skala: %s", sc_pct);
+   CreateLabel("REC_GOAL", g_panelX + S(14), g_panelY + S(304), scale_info, clrSkyBlue, 8, true);
 
    // 7. Action Feedback Label & Author Brand Legacy
-   CreateLabel("ACTION_FEEDBACK", g_panelX + S(12), g_panelY + S(342), "Siap eksekusi / copy", clrDarkGray, 8, false);
-   CreateLabel("FOOTER_BRAND", g_panelX + S(12), g_panelY + S(364), "⚡ jpXCode Pro © 2026 | All Rights Reserved", clrDarkCyan, 7, true);
-   CreateLabel("FOOTER_LINK", g_panelX + S(12), g_panelY + S(382), "Author: jpXCode | https://jpxcode.pages.dev", clrSlateGray, 7, false);
+   CreateLabel("ACTION_FEEDBACK", g_panelX + S(14), g_panelY + S(356), "Siap eksekusi / copy", clrDarkGray, 8, false);
+   CreateLabel("FOOTER_BRAND", g_panelX + S(14), g_panelY + S(376), "⚡ jpXCode Pro © 2026 | All Rights Reserved", clrDarkCyan, 7, true);
+   CreateLabel("FOOTER_LINK", g_panelX + S(14), g_panelY + S(394), "Author: jpXCode | https://jpxcode.pages.dev", clrSlateGray, 7, false);
 
    // 8. Update Chart Lines (Including POC line)
    if(poc_level > 0.0)
@@ -544,7 +554,7 @@ void OnChartEvent(const int id,
          if(!g_isDragging)
          {
             // Cek apakah klik berada di Header Drag Bar
-            int headerW = S(310);
+            int headerW = S(InpPanelWidth);
             int headerH = S(28);
             if(mx >= g_panelX && mx <= g_panelX + headerW &&
                my >= g_panelY && my <= g_panelY + headerH)
@@ -619,7 +629,7 @@ void OnChartEvent(const int id,
                                     g_last_buy_sl, g_last_buy_tp, g_last_sell_sl, g_last_sell_tp);
          Print("📋 [COPY_SLTP]: ", text);
          Alert("📋 NILAI DISALIN KE LOG:\n", text);
-         CreateLabel("ACTION_FEEDBACK", g_panelX + S(12), g_panelY + S(342), "✅ SL/TP dicetak ke Terminal Log", clrAqua, 8, true);
+         CreateLabel("ACTION_FEEDBACK", g_panelX + S(14), g_panelY + S(356), "✅ SL/TP dicetak ke Terminal Log", clrAqua, 8, true);
          ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
          ChartRedraw();
       }
@@ -627,14 +637,14 @@ void OnChartEvent(const int id,
       else if(sparam == PREFIX + "BTN_BUY")
       {
          Alert("🟢 [BUY CLICKED]: Saran BUY SL: ", g_last_buy_sl, " TP: ", g_last_buy_tp);
-         CreateLabel("ACTION_FEEDBACK", g_panelX + S(12), g_panelY + S(342), "🟢 BUY Triggered (Gunakan Web/EA)", InpAccentGreen, 8, true);
+         CreateLabel("ACTION_FEEDBACK", g_panelX + S(14), g_panelY + S(356), "🟢 BUY Triggered (Gunakan Web/EA)", InpAccentGreen, 8, true);
          ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
          ChartRedraw();
       }
       else if(sparam == PREFIX + "BTN_SELL")
       {
          Alert("🔴 [SELL CLICKED]: Saran SELL SL: ", g_last_sell_sl, " TP: ", g_last_sell_tp);
-         CreateLabel("ACTION_FEEDBACK", g_panelX + S(12), g_panelY + S(342), "🔴 SELL Triggered (Gunakan Web/EA)", InpAccentRed, 8, true);
+         CreateLabel("ACTION_FEEDBACK", g_panelX + S(14), g_panelY + S(356), "🔴 SELL Triggered (Gunakan Web/EA)", InpAccentRed, 8, true);
          ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
          ChartRedraw();
       }
