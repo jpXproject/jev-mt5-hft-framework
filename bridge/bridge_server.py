@@ -97,6 +97,12 @@ class MarketSnapshot(BaseModel):
     account_currency: Optional[str] = "USD"
     account_leverage: Optional[int] = 0
     trade_mode: Optional[str] = "UNKNOWN"
+    reservation_price: Optional[float] = None
+    strength: Optional[dict] = None
+    mtf_strength: Optional[dict] = None
+    suggestions: Optional[dict] = None
+    open_positions: Optional[List[dict]] = None
+    closed_deals: Optional[List[dict]] = None
 
 @app.get("/")
 @app.get("/dashboard")
@@ -153,6 +159,10 @@ async def evaluate(snapshot: MarketSnapshot):
     telemetry_state["action"] = action
     telemetry_state["latency_ms"] = round(latency_ms, 2)
     telemetry_state["timestamp"] = time.time()
+    if snapshot.open_positions is not None:
+        telemetry_state["open_positions"] = snapshot.open_positions
+    if snapshot.closed_deals is not None:
+        telemetry_state["closed_deals"] = snapshot.closed_deals
 
     # Save to local and common files if available
     try:

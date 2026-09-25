@@ -470,26 +470,26 @@
   <div class="grid-metrics" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
     <div class="card" style="border-left: 3px solid var(--accent-green);">
       <div class="card-title">Saldo Akun MT5 (Real Cent)</div>
-      <div class="card-value" id="acc-balance-display" style="color:var(--accent-green);">78.28 USC</div>
+      <div class="card-value" id="acc-balance-display" style="color:var(--accent-green);">-- USC</div>
       <div style="font-size:11px; font-family:'JetBrains Mono',monospace; color:var(--text-muted); margin-top:4px;" id="acc-meta-display">
-        Equity: 78.28 USC | #257549152 (Exness)
+        Menghubungkan live akun MT5...
       </div>
     </div>
     <div class="card">
       <div class="card-title">Live Chart Symbol & Mid Price</div>
-      <div class="card-value" id="mid-price">XAUUSDc 4,265.50</div>
+      <div class="card-value" id="mid-price">--</div>
     </div>
     <div class="card">
       <div class="card-title">Avellaneda-Stoikov Reservation</div>
-      <div class="card-value" id="reserv-price" style="color: var(--accent-gold);">4,265.50</div>
+      <div class="card-value" id="reserv-price" style="color: var(--accent-gold);">--</div>
     </div>
     <div class="card">
       <div class="card-title">Session VWAP / Spread</div>
-      <div class="card-value" id="vwap-spread">4,262.10 / 0.56 bps</div>
+      <div class="card-value" id="vwap-spread">-- / -- bps</div>
     </div>
     <div class="card">
       <div class="card-title">Inventory / Floating DD</div>
-      <div class="card-value" id="inv-dd" style="color: var(--accent-green);">0.00 Lot (0.00%)</div>
+      <div class="card-value" id="inv-dd" style="color: var(--accent-green);">-- Lot (--%)</div>
     </div>
   </div>
 
@@ -733,7 +733,7 @@
 
     async function updateDashboard() {
       try {
-        const res = await fetch('/api/telemetry');
+        const res = await fetch('/api/telemetry?_=' + Date.now(), { cache: 'no-store' });
         if(res.ok) {
           const data = await res.json();
           if(data.snapshot) {
