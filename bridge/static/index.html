@@ -205,7 +205,121 @@
     }
     .log-entry { margin-bottom: 4px; color: var(--text-muted); }
     .log-entry span.time { color: #475569; }
-    .log-entry span.hl { color: var(--accent-cyan); }
+    /* MT5 Toolbox Styles */
+    .toolbox-container {
+      background: #090e1a;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-top: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.45);
+    }
+    .toolbox-header {
+      background: #060913;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 12px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .toolbox-tabs {
+      display: flex;
+      gap: 2px;
+    }
+    .toolbox-tab-btn {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: #94a3b8;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 10px 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+    .toolbox-tab-btn:hover {
+      color: #f8fafc;
+      background: rgba(255,255,255,0.03);
+    }
+    .toolbox-tab-btn.active {
+      color: var(--accent-cyan);
+      border-bottom-color: var(--accent-cyan);
+      background: rgba(0, 240, 255, 0.08);
+    }
+    .toolbox-tab-count {
+      background: #1e293b;
+      color: #e2e8f0;
+      border-radius: 10px;
+      padding: 2px 7px;
+      font-size: 10px;
+    }
+    .toolbox-tab-btn.active .toolbox-tab-count {
+      background: var(--accent-cyan);
+      color: #000;
+      font-weight: 800;
+    }
+    .toolbox-table-wrapper {
+      overflow-x: auto;
+      width: 100%;
+      -webkit-overflow-scrolling: touch;
+      background: #080c17;
+      max-height: 380px;
+    }
+    .toolbox-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    .toolbox-table th {
+      background: #0d1527;
+      color: #94a3b8;
+      font-weight: 700;
+      font-size: 10px;
+      letter-spacing: 0.5px;
+      padding: 8px 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    .toolbox-table td {
+      padding: 7px 10px;
+      border-bottom: 1px solid rgba(30, 41, 59, 0.4);
+      color: #cbd5e1;
+    }
+    .toolbox-table tr:hover {
+      background: rgba(0, 240, 255, 0.04);
+    }
+    .toolbox-summary-bar {
+      background: #050811;
+      border-top: 1px solid var(--border);
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .tb-stat-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .tb-stat-item b {
+      color: #f8fafc;
+      font-weight: 700;
+    }
 
     /* Sync Toolbar & Mobile Responsive Optimization */
     .sync-toolbar {
@@ -554,55 +668,95 @@
         <div class="risk-item"><span><span class="status-dot dot-ok"></span>Margin Level (&gt;200%)</span><span>PASS</span></div>
         <div class="risk-item"><span><span class="status-dot dot-ok"></span>Lot Cap (&le;0.10)</span><span>PASS</span></div>
       </div>
-  <!-- Real-time Positions & Deals Ledger Section -->
-  <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px;">
-    <!-- Active Open Positions -->
-    <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-        <span class="card-title" style="margin:0;">🟢 POSISI TERBUKA AKTIF (LIVE OPEN POSITIONS)</span>
-        <span id="open-count-badge" class="badge badge-run">0 POSISI</span>
+    </div>
+  </div> <!-- Penutup main-layout -->
+
+  <!-- ========================================================= -->
+  <!-- 💼 MT5 TOOLBOX: LIVE TRADE & ACCOUNT MONITOR (REAL-TIME) -->
+  <!-- ========================================================= -->
+  <div class="toolbox-container">
+    <div class="toolbox-header">
+      <div class="toolbox-tabs">
+        <button id="btn-tb-trade" class="toolbox-tab-btn active" onclick="switchToolboxTab('trade')">
+          💼 Trade <span id="toolbox-trade-count" class="toolbox-tab-count">0</span>
+        </button>
+        <button id="btn-tb-history" class="toolbox-tab-btn" onclick="switchToolboxTab('history')">
+          📜 History <span id="toolbox-history-count" class="toolbox-tab-count">0</span>
+        </button>
       </div>
-      <div style="overflow-x:auto;">
-        <table style="width:100%; font-family:'JetBrains Mono',monospace; font-size:11px; border-collapse:collapse;" id="open-table">
-          <thead>
-            <tr style="color:var(--text-muted); text-align:left; border-bottom:1px solid var(--border);">
-              <th style="padding:6px;">TIKET</th>
-              <th style="padding:6px;">TIPE</th>
-              <th style="padding:6px;">LOT</th>
-              <th style="padding:6px;">OPEN</th>
-              <th style="padding:6px;">SL / TP</th>
-              <th style="padding:6px; text-align:right;">PNL (USC)</th>
-            </tr>
-          </thead>
-          <tbody id="open-tbody">
-            <tr><td colspan="6" style="padding:10px; text-align:center; color:var(--text-muted);">Tidak ada posisi aktif</td></tr>
-          </tbody>
-        </table>
+      <div style="display:flex; align-items:center; gap:8px; font-family:'JetBrains Mono',monospace; font-size:11px;">
+        <span class="status-dot dot-ok"></span>
+        <span style="color:var(--accent-green); font-weight:700;">TOOLBOX MT5 LIVE FEED</span>
+        <span style="color:var(--text-muted); font-size:10px;" id="tb-last-update-time">--:--:--</span>
       </div>
     </div>
 
-    <!-- Recent Closed Deals -->
-    <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-        <span class="card-title" style="margin:0;">📜 RIWAYAT CLOSE ORDER TERBARU (CLOSED DEALS)</span>
-        <span class="badge" style="background:rgba(148,163,184,0.15); color:var(--text-muted); border:1px solid var(--border);">HARI INI</span>
-      </div>
-      <div style="overflow-x:auto;">
-        <table style="width:100%; font-family:'JetBrains Mono',monospace; font-size:11px; border-collapse:collapse;" id="closed-table">
+    <!-- Tab 1: Live Trade Positions -->
+    <div id="tb-trade-content" style="display:block;">
+      <div class="toolbox-table-wrapper">
+        <table class="toolbox-table" id="open-table">
           <thead>
-            <tr style="color:var(--text-muted); text-align:left; border-bottom:1px solid var(--border);">
-              <th style="padding:6px;">ORDER</th>
-              <th style="padding:6px;">TIPE</th>
-              <th style="padding:6px;">LOT</th>
-              <th style="padding:6px;">EXIT</th>
-              <th style="padding:6px;">JAM</th>
-              <th style="padding:6px; text-align:right;">PROFIT</th>
+            <tr>
+              <th>WAKTU</th>
+              <th>TIKET</th>
+              <th>SIMBOL</th>
+              <th>TIPE</th>
+              <th>VOLUME</th>
+              <th>HARGA BUKA</th>
+              <th>S / L</th>
+              <th>T / P</th>
+              <th>HARGA KINI</th>
+              <th style="text-align:right;">PROFIT (USC)</th>
+            </tr>
+          </thead>
+          <tbody id="open-tbody">
+            <tr><td colspan="10" style="padding:16px; text-align:center; color:var(--text-muted);">Menghubungkan ke terminal MT5...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- MT5 Account Status Bar (Bawah Tabel Trade) -->
+      <div class="toolbox-summary-bar" id="tb-summary-bar">
+        <div class="tb-stat-item">Saldo: <b id="tb-stat-balance">0.00 USC</b></div>
+        <div style="color:#334155;">|</div>
+        <div class="tb-stat-item">Ekuitas: <b id="tb-stat-equity" style="color:var(--accent-green);">0.00 USC</b></div>
+        <div style="color:#334155;">|</div>
+        <div class="tb-stat-item">Margin: <b id="tb-stat-margin">0.00 USC</b></div>
+        <div style="color:#334155;">|</div>
+        <div class="tb-stat-item">Bebas Margin: <b id="tb-stat-free-margin">0.00 USC</b></div>
+        <div style="color:#334155;">|</div>
+        <div class="tb-stat-item">Level Margin: <b id="tb-stat-margin-level">--%</b></div>
+        <div style="color:#334155;">|</div>
+        <div class="tb-stat-item">Total Profit: <b id="tb-stat-floating" style="color:var(--accent-green);">0.00 USC</b></div>
+      </div>
+    </div>
+
+    <!-- Tab 2: Closed Deals History -->
+    <div id="tb-history-content" style="display:none;">
+      <div class="toolbox-table-wrapper">
+        <table class="toolbox-table" id="closed-table">
+          <thead>
+            <tr>
+              <th>WAKTU</th>
+              <th>ORDER / TIKET</th>
+              <th>SIMBOL</th>
+              <th>TIPE</th>
+              <th>VOLUME</th>
+              <th>HARGA EXIT</th>
+              <th>KOMENTAR</th>
+              <th style="text-align:right;">PROFIT (USC)</th>
             </tr>
           </thead>
           <tbody id="closed-tbody">
-            <tr><td colspan="6" style="padding:10px; text-align:center; color:var(--text-muted);">Memuat riwayat...</td></tr>
+            <tr><td colspan="8" style="padding:16px; text-align:center; color:var(--text-muted);">Memuat riwayat transaksi...</td></tr>
           </tbody>
         </table>
+      </div>
+      <!-- History Summary Bar -->
+      <div class="toolbox-summary-bar">
+        <div class="tb-stat-item">Total Deals Hari Ini: <b id="tb-stat-closed-count">0</b></div>
+        <div style="color:#334155;">|</div>
+        <div class="tb-stat-item">Realized P/L Hari Ini: <b id="tb-stat-closed-pnl" style="color:var(--accent-green);">0.00 USC</b></div>
       </div>
     </div>
   </div>
@@ -873,63 +1027,158 @@
           }
 
           if(data.open_positions) {
-            renderOpenPositions(data.open_positions);
+            renderOpenPositions(data.open_positions, data.snapshot || {});
           }
 
           if(data.closed_deals) {
-            renderClosedDeals(data.closed_deals);
+            renderClosedDeals(data.closed_deals, data.snapshot || {});
           }
+
+          const timeEl = document.getElementById('tb-last-update-time');
+          if(timeEl) timeEl.innerText = new Date().toLocaleTimeString();
         }
       } catch(e) {}
     }
 
-    function renderOpenPositions(positions) {
-      const tbody = document.getElementById('open-tbody');
-      if(!tbody) return;
-      if(!positions || positions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="padding:10px; text-align:center; color:var(--text-muted);">Tidak ada posisi aktif saat ini (Flat)</td></tr>';
-        return;
+    function switchToolboxTab(tab) {
+      const btnTrade = document.getElementById('btn-tb-trade');
+      const btnHistory = document.getElementById('btn-tb-history');
+      const contentTrade = document.getElementById('tb-trade-content');
+      const contentHistory = document.getElementById('tb-history-content');
+      if(tab === 'trade') {
+        if(btnTrade) btnTrade.classList.add('active');
+        if(btnHistory) btnHistory.classList.remove('active');
+        if(contentTrade) contentTrade.style.display = 'block';
+        if(contentHistory) contentHistory.style.display = 'none';
+      } else {
+        if(btnTrade) btnTrade.classList.remove('active');
+        if(btnHistory) btnHistory.classList.add('active');
+        if(contentTrade) contentTrade.style.display = 'none';
+        if(contentHistory) contentHistory.style.display = 'block';
       }
-      let html = '';
-      positions.forEach(p => {
-        const pColor = p.profit >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-        const tColor = p.type === 'BUY' ? 'var(--accent-green)' : 'var(--accent-red)';
-        const sign = p.profit > 0 ? '+' : '';
-        html += `<tr style="border-bottom:1px solid rgba(51,65,85,0.4);">
-          <td style="padding:6px; font-weight:bold;">#${p.ticket}</td>
-          <td style="padding:6px; color:${tColor}; font-weight:bold;">${p.type}</td>
-          <td style="padding:6px;">${p.volume}</td>
-          <td style="padding:6px;">${p.open_price}</td>
-          <td style="padding:6px;">${p.cur_price}</td>
-          <td style="padding:6px; color:var(--text-muted); font-size:10px;">${p.sl} / ${p.tp}</td>
-          <td style="padding:6px; text-align:right; font-weight:bold; color:${pColor};">${sign}${p.profit.toFixed(2)} USC</td>
-        </tr>`;
-      });
-      tbody.innerHTML = html;
     }
 
-    function renderClosedDeals(deals) {
-      const tbody = document.getElementById('closed-tbody');
+    function renderOpenPositions(positions, snap) {
+      const tbody = document.getElementById('open-tbody');
+      const countBadge = document.getElementById('toolbox-trade-count');
+      if(countBadge) countBadge.innerText = positions ? positions.length : 0;
       if(!tbody) return;
-      if(!deals || deals.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="padding:10px; text-align:center; color:var(--text-muted);">Belum ada posisi tertutup hari ini</td></tr>';
-        return;
+
+      const sym = (snap && snap.symbol) ? snap.symbol : 'XAUUSDc';
+      let totFloating = 0.0;
+
+      if(!positions || positions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" style="padding:16px; text-align:center; color:var(--text-muted);">Tidak ada transaksi berjalan (Flat)</td></tr>';
+      } else {
+        let html = '';
+        positions.forEach(p => {
+          const prof = Number(p.profit || 0);
+          totFloating += prof;
+          const pColor = prof >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+          const tColor = p.type === 'BUY' ? 'var(--accent-green)' : 'var(--accent-red)';
+          const tBg = p.type === 'BUY' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
+          const sign = prof > 0 ? '+' : '';
+          const slText = (p.sl && p.sl > 0) ? Number(p.sl).toFixed(3) : '-';
+          const tpText = (p.tp && p.tp > 0) ? Number(p.tp).toFixed(3) : '-';
+          const curPrice = (p.cur_price !== undefined) ? Number(p.cur_price).toFixed(3) : '-';
+          const openPrice = (p.open_price !== undefined) ? Number(p.open_price).toFixed(3) : '-';
+
+          html += `<tr>
+            <td style="color:#94a3b8;">${p.time || '--:--:--'}</td>
+            <td style="font-weight:700; color:#f8fafc;">#${p.ticket}</td>
+            <td style="color:var(--accent-cyan); font-weight:600;">${sym}</td>
+            <td><span style="padding:2px 7px; border-radius:4px; font-weight:800; font-size:10px; background:${tBg}; color:${tColor}; border:1px solid ${tColor}40;">${p.type}</span></td>
+            <td style="font-weight:700; color:#f8fafc;">${Number(p.volume).toFixed(2)}</td>
+            <td>${openPrice}</td>
+            <td style="color:var(--accent-red); font-size:10px;">${slText}</td>
+            <td style="color:var(--accent-green); font-size:10px;">${tpText}</td>
+            <td style="font-weight:600; color:#e2e8f0;">${curPrice}</td>
+            <td style="text-align:right; font-weight:800; color:${pColor};">${sign}${prof.toFixed(2)} USC</td>
+          </tr>`;
+        });
+        tbody.innerHTML = html;
       }
-      let html = '';
-      deals.forEach(d => {
-        const pColor = d.profit >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-        const tColor = d.type === 'BUY' ? 'var(--accent-green)' : 'var(--accent-red)';
-        const sign = d.profit > 0 ? '+' : '';
-        html += `<tr style="border-bottom:1px solid rgba(51,65,85,0.4);">
-          <td style="padding:6px;">#${d.order || d.ticket}</td>
-          <td style="padding:6px; color:${tColor}; font-weight:bold;">${d.type}</td>
-          <td style="padding:6px;">${d.volume}</td>
-          <td style="padding:6px;">${d.price}</td>
-          <td style="padding:6px; color:var(--text-muted);">${d.time}</td>
-          <td style="padding:6px; text-align:right; font-weight:bold; color:${pColor};">${sign}${d.profit.toFixed(2)} USC</td>
-        </tr>`;
-      });
-      tbody.innerHTML = html;
+
+      // Update MT5 Toolbox Summary Bar
+      const balEl = document.getElementById('tb-stat-balance');
+      const eqEl = document.getElementById('tb-stat-equity');
+      const marEl = document.getElementById('tb-stat-margin');
+      const freeEl = document.getElementById('tb-stat-free-margin');
+      const levEl = document.getElementById('tb-stat-margin-level');
+      const floatEl = document.getElementById('tb-stat-floating');
+
+      const balVal = (snap && snap.balance !== undefined) ? snap.balance : 0.0;
+      const eqVal = (snap && snap.equity !== undefined) ? snap.equity : balVal;
+      const marVal = (snap && snap.margin !== undefined) ? snap.margin : 0.0;
+      const freeVal = (snap && snap.margin_free !== undefined) ? snap.margin_free : (balVal - marVal);
+
+      if(balEl) balEl.innerText = `${balVal.toFixed(2)} USC`;
+      if(eqEl) eqEl.innerText = `${eqVal.toFixed(2)} USC`;
+      if(marEl) marEl.innerText = `${marVal.toFixed(2)} USC`;
+      if(freeEl) freeEl.innerText = `${freeVal.toFixed(2)} USC`;
+
+      if(levEl) {
+        if(marVal > 0) {
+          const ml = (eqVal / marVal) * 100.0;
+          levEl.innerText = `${ml.toFixed(2)}%`;
+          levEl.style.color = ml > 200 ? 'var(--accent-green)' : (ml > 100 ? 'var(--accent-yellow)' : 'var(--accent-red)');
+        } else {
+          levEl.innerText = '--%';
+          levEl.style.color = '#f8fafc';
+        }
+      }
+
+      if(floatEl) {
+        floatEl.innerText = `${totFloating > 0 ? '+' : ''}${totFloating.toFixed(2)} USC`;
+        floatEl.style.color = totFloating >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+      }
+    }
+
+    function renderClosedDeals(deals, snap) {
+      const tbody = document.getElementById('closed-tbody');
+      const countBadge = document.getElementById('toolbox-history-count');
+      const statCount = document.getElementById('tb-stat-closed-count');
+      const statPnl = document.getElementById('tb-stat-closed-pnl');
+      
+      const count = deals ? deals.length : 0;
+      if(countBadge) countBadge.innerText = count;
+      if(statCount) statCount.innerText = count;
+      if(!tbody) return;
+
+      const sym = (snap && snap.symbol) ? snap.symbol : 'XAUUSDc';
+      let totProfit = 0.0;
+
+      if(!deals || deals.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="padding:16px; text-align:center; color:var(--text-muted);">Belum ada posisi tertutup hari ini</td></tr>';
+      } else {
+        let html = '';
+        deals.forEach(d => {
+          const prof = Number(d.profit || 0);
+          totProfit += prof;
+          const pColor = prof >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+          const tColor = d.type === 'BUY' ? 'var(--accent-green)' : 'var(--accent-red)';
+          const tBg = d.type === 'BUY' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
+          const sign = prof > 0 ? '+' : '';
+          const prPrice = (d.price !== undefined) ? Number(d.price).toFixed(3) : '-';
+
+          html += `<tr>
+            <td style="color:#94a3b8;">${d.time || '--:--:--'}</td>
+            <td style="font-weight:700; color:#f8fafc;">#${d.order || d.ticket}</td>
+            <td style="color:var(--accent-cyan); font-weight:600;">${sym}</td>
+            <td><span style="padding:2px 7px; border-radius:4px; font-weight:800; font-size:10px; background:${tBg}; color:${tColor}; border:1px solid ${tColor}40;">${d.type}</span></td>
+            <td style="font-weight:700; color:#f8fafc;">${Number(d.volume).toFixed(2)}</td>
+            <td>${prPrice}</td>
+            <td style="color:var(--text-muted); font-size:10px;">${d.comment || '-'}</td>
+            <td style="text-align:right; font-weight:800; color:${pColor};">${sign}${prof.toFixed(2)} USC</td>
+          </tr>`;
+        });
+        tbody.innerHTML = html;
+      }
+
+      if(statPnl) {
+        statPnl.innerText = `${totProfit > 0 ? '+' : ''}${totProfit.toFixed(2)} USC`;
+        statPnl.style.color = totProfit >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+      }
     }
 
     // ==========================================
