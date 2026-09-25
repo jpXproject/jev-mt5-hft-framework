@@ -885,40 +885,66 @@
       }
     }
 
+    let isUpdatingDashboard = false;
+    let lastPositionsFingerprint = '';
+    let lastDealsFingerprint = '';
+
     async function updateDashboard() {
+      if(isUpdatingDashboard) return;
+      isUpdatingDashboard = true;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2800);
+
       try {
-        const res = await fetch('/api/telemetry?_=' + Date.now(), { cache: 'no-store' });
+        const res = await fetch('/api/telemetry?_=' + Date.now(), { 
+          cache: 'no-store',
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
         if(res.ok) {
           const data = await res.json();
           if(data.snapshot) {
             const snap = data.snapshot;
             const midEl = document.getElementById('mid-price');
 
-            if(lastMid !== 0 && snap.mid !== lastMid) {
-              midEl.className = 'card-value ' + (snap.mid > lastMid ? 'flash-up' : 'flash-down');
-              setTimeout(() => { midEl.className = 'card-value'; }, 300);
+            if(midEl) {
+              if(lastMid !== 0 && snap.mid !== lastMid) {
+                midEl.className = 'card-value ' + (snap.mid > lastMid ? 'flash-up' : 'flash-down');
+                setTimeout(() => { if(midEl) midEl.className = 'card-value'; }, 300);
 
-              const now = new Date().toTimeString().split(' ')[0];
-              const logBox = document.getElementById('log-box');
-              const entry = document.createElement('div');
-              entry.className = 'log-entry';
-              entry.innerHTML = `<span class="time">[${now}]</span> <span class="hl">${snap.symbol}:</span> Mid=${snap.mid.toFixed(3)} | Reserv=${(snap.reservation_price || snap.mid).toFixed(3)} | VWAP=${snap.vwap.toFixed(3)}`;
-              logBox.prepend(entry);
-              if(logBox.childNodes.length > 25) logBox.removeChild(logBox.lastChild);
+                const now = new Date().toTimeString().split(' ')[0];
+                const logBox = document.getElementById('log-box');
+                if(logBox) {
+                  const entry = document.createElement('div');
+                  entry.className = 'log-entry';
+                  entry.innerHTML = `<span class="time">[${now}]</span> <span class="hl">${snap.symbol}:</span> Mid=${snap.mid.toFixed(3)} | Reserv=${(snap.reservation_price || snap.mid).toFixed(3)} | VWAP=${snap.vwap.toFixed(3)}`;
+                  logBox.prepend(entry);
+                  while(logBox.childNodes.length > 25) {
+                    logBox.removeChild(logBox.lastChild);
+                  }
+                }
+              }
+              lastMid = snap.mid;
+              midEl.innerText = `${snap.symbol} ${snap.mid.toFixed(3)}`;
             }
-            lastMid = snap.mid;
 
-            midEl.innerText = `${snap.symbol} ${snap.mid.toFixed(3)}`;
-            document.getElementById('reserv-price').innerText = (snap.reservation_price || snap.mid).toFixed(3);
-            document.getElementById('vwap-spread').innerText = `${snap.vwap.toFixed(3)} / ${snap.spread_bps.toFixed(2)} bps`;
+            const resEl = document.getElementById('reserv-price');
+            if(resEl) resEl.innerText = (snap.reservation_price || snap.mid).toFixed(3);
+
+            const vwapEl = document.getElementById('vwap-spread');
+            if(vwapEl) vwapEl.innerText = `${snap.vwap.toFixed(3)} / ${snap.spread_bps.toFixed(2)} bps`;
             
-            const netSign = snap.net_lot >= 0 ? '+' : '';
-            document.getElementById('inv-dd').innerText = `${netSign}${snap.net_lot.toFixed(2)} Lot (${snap.drawdown_pct.toFixed(2)}%)`;
+            const invEl = document.getElementById('inv-dd');
+            if(invEl) {
+              const netSign = snap.net_lot >= 0 ? '+' : '';
+              invEl.innerText = `${netSign}${snap.net_lot.toFixed(2)} Lot (${snap.drawdown_pct.toFixed(2)}%)`;
+            }
 
-            // Strict Real-Time AutoSync - No Dummy Data
+            // Strict Real-Time AutoSync
             const balEl = document.getElementById('acc-balance-display');
             const metaEl = document.getElementById('acc-meta-display');
-            const baseEl = document.getElementById('rec-baseline-text');
             
             const currSymbol = snap.account_currency || 'USD';
             const unit = (snap.symbol && snap.symbol.toLowerCase().endsWith('c')) ? 'USC' : currSymbol;
@@ -1009,21 +1035,31 @@
 
           if(data.battery) {
             const bat = data.battery;
-            document.getElementById('bat-regime').innerText = bat.regime;
+            const batReg = document.getElementById('bat-regime');
+            if(batReg) batReg.innerText = bat.regime;
             const dirEl = document.getElementById('bat-direction');
-            dirEl.innerText = bat.direction.toUpperCase();
-            dirEl.style.color = bat.direction === 'up' ? 'var(--accent-green)' : (bat.direction === 'down' ? 'var(--accent-red)' : 'var(--text-muted)');
-            document.getElementById('bat-toxic').innerText = bat.toxic_flow;
-            document.getElementById('bat-stress').innerText = bat.liquidity_stress;
-            document.getElementById('bat-quote').innerText = bat.quote_environment;
-            document.getElementById('bat-inv').innerText = bat.inventory_pressure;
-            document.getElementById('ai-conf').innerText = `CONFIDENCE: ${(bat.confidence * 100).toFixed(0)}%`;
+            if(dirEl) {
+              dirEl.innerText = (bat.direction || '').toUpperCase();
+              dirEl.style.color = bat.direction === 'up' ? 'var(--accent-green)' : (bat.direction === 'down' ? 'var(--accent-red)' : 'var(--text-muted)');
+            }
+            const batTox = document.getElementById('bat-toxic');
+            if(batTox) batTox.innerText = bat.toxic_flow;
+            const batStr = document.getElementById('bat-stress');
+            if(batStr) batStr.innerText = bat.liquidity_stress;
+            const batQ = document.getElementById('bat-quote');
+            if(batQ) batQ.innerText = bat.quote_environment;
+            const batInv = document.getElementById('bat-inv');
+            if(batInv) batInv.innerText = bat.inventory_pressure;
+            const aiConf = document.getElementById('ai-conf');
+            if(aiConf) aiConf.innerText = `CONFIDENCE: ${(bat.confidence * 100).toFixed(0)}%`;
           }
 
           if(data.action) {
             const actEl = document.getElementById('policy-action');
-            actEl.innerText = `${data.action.action} (Scale: ${data.action.lot_scale}) — ${data.action.reason || ''}`;
-            actEl.style.color = data.action.action === 'BUY' ? 'var(--accent-green)' : (data.action.action === 'SELL' ? 'var(--accent-red)' : 'var(--accent-yellow)');
+            if(actEl) {
+              actEl.innerText = `${data.action.action} (Scale: ${data.action.lot_scale}) — ${data.action.reason || ''}`;
+              actEl.style.color = data.action.action === 'BUY' ? 'var(--accent-green)' : (data.action.action === 'SELL' ? 'var(--accent-red)' : 'var(--accent-yellow)');
+            }
           }
 
           if(data.open_positions) {
@@ -1037,7 +1073,11 @@
           const timeEl = document.getElementById('tb-last-update-time');
           if(timeEl) timeEl.innerText = new Date().toLocaleTimeString();
         }
-      } catch(e) {}
+      } catch(e) {
+        clearTimeout(timeoutId);
+      } finally {
+        isUpdatingDashboard = false;
+      }
     }
 
     function switchToolboxTab(tab) {
@@ -1067,36 +1107,44 @@
       const sym = (snap && snap.symbol) ? snap.symbol : 'XAUUSDc';
       let totFloating = 0.0;
 
-      if(!positions || positions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="padding:16px; text-align:center; color:var(--text-muted);">Tidak ada transaksi berjalan (Flat)</td></tr>';
-      } else {
-        let html = '';
-        positions.forEach(p => {
-          const prof = Number(p.profit || 0);
-          totFloating += prof;
-          const pColor = prof >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-          const tColor = p.type === 'BUY' ? 'var(--accent-green)' : 'var(--accent-red)';
-          const tBg = p.type === 'BUY' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
-          const sign = prof > 0 ? '+' : '';
-          const slText = (p.sl && p.sl > 0) ? Number(p.sl).toFixed(3) : '-';
-          const tpText = (p.tp && p.tp > 0) ? Number(p.tp).toFixed(3) : '-';
-          const curPrice = (p.cur_price !== undefined) ? Number(p.cur_price).toFixed(3) : '-';
-          const openPrice = (p.open_price !== undefined) ? Number(p.open_price).toFixed(3) : '-';
+      // Smart DOM Fingerprint Cache: Cegah DOM reflow jika posisi tidak berubah
+      const fingerprint = JSON.stringify(positions || []);
+      if(fingerprint !== lastPositionsFingerprint) {
+        lastPositionsFingerprint = fingerprint;
 
-          html += `<tr>
-            <td style="color:#94a3b8;">${p.time || '--:--:--'}</td>
-            <td style="font-weight:700; color:#f8fafc;">#${p.ticket}</td>
-            <td style="color:var(--accent-cyan); font-weight:600;">${sym}</td>
-            <td><span style="padding:2px 7px; border-radius:4px; font-weight:800; font-size:10px; background:${tBg}; color:${tColor}; border:1px solid ${tColor}40;">${p.type}</span></td>
-            <td style="font-weight:700; color:#f8fafc;">${Number(p.volume).toFixed(2)}</td>
-            <td>${openPrice}</td>
-            <td style="color:var(--accent-red); font-size:10px;">${slText}</td>
-            <td style="color:var(--accent-green); font-size:10px;">${tpText}</td>
-            <td style="font-weight:600; color:#e2e8f0;">${curPrice}</td>
-            <td style="text-align:right; font-weight:800; color:${pColor};">${sign}${prof.toFixed(2)} USC</td>
-          </tr>`;
-        });
-        tbody.innerHTML = html;
+        if(!positions || positions.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="10" style="padding:16px; text-align:center; color:var(--text-muted);">Tidak ada transaksi berjalan (Flat)</td></tr>';
+        } else {
+          let html = '';
+          positions.forEach(p => {
+            const prof = Number(p.profit || 0);
+            totFloating += prof;
+            const pColor = prof >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+            const tColor = p.type === 'BUY' ? 'var(--accent-green)' : 'var(--accent-red)';
+            const tBg = p.type === 'BUY' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
+            const sign = prof > 0 ? '+' : '';
+            const slText = (p.sl && p.sl > 0) ? Number(p.sl).toFixed(3) : '-';
+            const tpText = (p.tp && p.tp > 0) ? Number(p.tp).toFixed(3) : '-';
+            const curPrice = (p.cur_price !== undefined) ? Number(p.cur_price).toFixed(3) : '-';
+            const openPrice = (p.open_price !== undefined) ? Number(p.open_price).toFixed(3) : '-';
+
+            html += `<tr>
+              <td style="color:#94a3b8;">${p.time || '--:--:--'}</td>
+              <td style="font-weight:700; color:#f8fafc;">#${p.ticket}</td>
+              <td style="color:var(--accent-cyan); font-weight:600;">${sym}</td>
+              <td><span style="padding:2px 7px; border-radius:4px; font-weight:800; font-size:10px; background:${tBg}; color:${tColor}; border:1px solid ${tColor}40;">${p.type}</span></td>
+              <td style="font-weight:700; color:#f8fafc;">${Number(p.volume).toFixed(2)}</td>
+              <td>${openPrice}</td>
+              <td style="color:var(--accent-red); font-size:10px;">${slText}</td>
+              <td style="color:var(--accent-green); font-size:10px;">${tpText}</td>
+              <td style="font-weight:600; color:#e2e8f0;">${curPrice}</td>
+              <td style="text-align:right; font-weight:800; color:${pColor};">${sign}${prof.toFixed(2)} USC</td>
+            </tr>`;
+          });
+          tbody.innerHTML = html;
+        }
+      } else if(positions && positions.length > 0) {
+        positions.forEach(p => { totFloating += Number(p.profit || 0); });
       }
 
       // Update MT5 Toolbox Summary Bar
@@ -1148,31 +1196,38 @@
       const sym = (snap && snap.symbol) ? snap.symbol : 'XAUUSDc';
       let totProfit = 0.0;
 
-      if(!deals || deals.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="padding:16px; text-align:center; color:var(--text-muted);">Belum ada posisi tertutup hari ini</td></tr>';
-      } else {
-        let html = '';
-        deals.forEach(d => {
-          const prof = Number(d.profit || 0);
-          totProfit += prof;
-          const pColor = prof >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-          const tColor = d.type === 'BUY' ? 'var(--accent-green)' : 'var(--accent-red)';
-          const tBg = d.type === 'BUY' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
-          const sign = prof > 0 ? '+' : '';
-          const prPrice = (d.price !== undefined) ? Number(d.price).toFixed(3) : '-';
+      const fingerprint = JSON.stringify(deals || []);
+      if(fingerprint !== lastDealsFingerprint) {
+        lastDealsFingerprint = fingerprint;
 
-          html += `<tr>
-            <td style="color:#94a3b8;">${d.time || '--:--:--'}</td>
-            <td style="font-weight:700; color:#f8fafc;">#${d.order || d.ticket}</td>
-            <td style="color:var(--accent-cyan); font-weight:600;">${sym}</td>
-            <td><span style="padding:2px 7px; border-radius:4px; font-weight:800; font-size:10px; background:${tBg}; color:${tColor}; border:1px solid ${tColor}40;">${d.type}</span></td>
-            <td style="font-weight:700; color:#f8fafc;">${Number(d.volume).toFixed(2)}</td>
-            <td>${prPrice}</td>
-            <td style="color:var(--text-muted); font-size:10px;">${d.comment || '-'}</td>
-            <td style="text-align:right; font-weight:800; color:${pColor};">${sign}${prof.toFixed(2)} USC</td>
-          </tr>`;
-        });
-        tbody.innerHTML = html;
+        if(!deals || deals.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="8" style="padding:16px; text-align:center; color:var(--text-muted);">Belum ada posisi tertutup hari ini</td></tr>';
+        } else {
+          let html = '';
+          deals.forEach(d => {
+            const prof = Number(d.profit || 0);
+            totProfit += prof;
+            const pColor = prof >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+            const tColor = d.type === 'BUY' ? 'var(--accent-green)' : 'var(--accent-red)';
+            const tBg = d.type === 'BUY' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
+            const sign = prof > 0 ? '+' : '';
+            const prPrice = (d.price !== undefined) ? Number(d.price).toFixed(3) : '-';
+
+            html += `<tr>
+              <td style="color:#94a3b8;">${d.time || '--:--:--'}</td>
+              <td style="font-weight:700; color:#f8fafc;">#${d.order || d.ticket}</td>
+              <td style="color:var(--accent-cyan); font-weight:600;">${sym}</td>
+              <td><span style="padding:2px 7px; border-radius:4px; font-weight:800; font-size:10px; background:${tBg}; color:${tColor}; border:1px solid ${tColor}40;">${d.type}</span></td>
+              <td style="font-weight:700; color:#f8fafc;">${Number(d.volume).toFixed(2)}</td>
+              <td>${prPrice}</td>
+              <td style="color:var(--text-muted); font-size:10px;">${d.comment || '-'}</td>
+              <td style="text-align:right; font-weight:800; color:${pColor};">${sign}${prof.toFixed(2)} USC</td>
+            </tr>`;
+          });
+          tbody.innerHTML = html;
+        }
+      } else if(deals && deals.length > 0) {
+        deals.forEach(d => { totProfit += Number(d.profit || 0); });
       }
 
       if(statPnl) {
@@ -1258,15 +1313,26 @@
       applyPanelScale();
     })();
 
-    // Dynamic Auto-Refresh & Real-Time Sync Controller
-    let g_refreshIntervalMs = 250;
+    // Dynamic Auto-Refresh & Real-Time Sync Controller (Sequential Non-Blocking Poller)
+    let g_refreshIntervalMs = 1000; // 1s default for smooth, lag-free rendering
     let g_refreshTimer = null;
     let g_isAutoRefreshActive = true;
 
-    function startAutoRefreshTimer() {
-      if (g_refreshTimer) clearInterval(g_refreshTimer);
+    async function pollNextTick() {
+      if (!g_isAutoRefreshActive) return;
+      try {
+        await updateDashboard();
+      } catch(e) {}
       if (g_isAutoRefreshActive) {
-        g_refreshTimer = setInterval(updateDashboard, g_refreshIntervalMs);
+        if (g_refreshTimer) clearTimeout(g_refreshTimer);
+        g_refreshTimer = setTimeout(pollNextTick, g_refreshIntervalMs);
+      }
+    }
+
+    function startAutoRefreshTimer() {
+      if (g_refreshTimer) clearTimeout(g_refreshTimer);
+      if (g_isAutoRefreshActive) {
+        g_refreshTimer = setTimeout(pollNextTick, 50);
       }
     }
 
@@ -1274,15 +1340,15 @@
       const btn = document.getElementById('btn-autorefresh');
       const badge = document.getElementById('auto-badge');
 
-      if (g_refreshIntervalMs === 250 && g_isAutoRefreshActive) {
-        g_refreshIntervalMs = 1000;
-      } else if (g_refreshIntervalMs === 1000 && g_isAutoRefreshActive) {
+      if (g_refreshIntervalMs === 1000 && g_isAutoRefreshActive) {
         g_refreshIntervalMs = 2000;
       } else if (g_refreshIntervalMs === 2000 && g_isAutoRefreshActive) {
+        g_refreshIntervalMs = 500;
+      } else if (g_refreshIntervalMs === 500 && g_isAutoRefreshActive) {
         g_isAutoRefreshActive = false; // PAUSE
       } else {
         g_isAutoRefreshActive = true;
-        g_refreshIntervalMs = 250;
+        g_refreshIntervalMs = 1000;
       }
 
       if (g_isAutoRefreshActive) {
