@@ -35,8 +35,8 @@ input double   InpSigma             = 0.02;          // Volatility estimate (sig
 input group "=== Saran SL / TP & Interactive Buttons ==="
 input bool     InpShowSLTP          = true;          // Aktifkan Saran SL/TP & Chart Lines
 input int      InpATRPeriod         = 14;            // Periode ATR untuk SL/TP
-input double   InpATRMultiplierSL   = 2.2;           // Multiplier ATR untuk Stop Loss
-input double   InpATRMultiplierTP   = 3.8;           // Multiplier ATR untuk Take Profit
+input double   InpATRMultiplierSL   = 1.5;           // Multiplier ATR untuk Stop Loss (Optimized)
+input double   InpATRMultiplierTP   = 3.2;           // Multiplier ATR untuk Take Profit (Optimized R:R 1:2.13)
 input color    InpSLLineColor       = clrTomato;     // Warna Garis Saran SL di Chart
 input color    InpTPLineColor       = clrLime;       // Warna Garis Saran TP di Chart
 input double   InpDefaultLot        = 0.01;          // Lot size default
@@ -397,7 +397,7 @@ void UpdateHUD()
    string sell_str = StringFormat("🔴 SELL SL: %.3f | TP: %.3f", sell_sl, sell_tp);
    CreateLabel("SUGG_SELL", g_panelX + S(12), g_panelY + S(162), sell_str, InpAccentRed, 9, !is_bullish);
 
-   string bias_str = StringFormat("🎯 Bias: %s (R:R 1:1.73)", dominant_bias);
+   string bias_str = StringFormat("🎯 Bias: %s (R:R 1:2.13)", dominant_bias);
    CreateLabel("BIAS", g_panelX + S(12), g_panelY + S(182), bias_str, bias_color, 9, true);
 
    // 5. Battery & Volatility

@@ -326,9 +326,9 @@ def mt5_live_poller():
                         tr_vals = [max(r['high'] - r['low'], abs(r['high'] - r['close'])) for r in rates[-14:]]
                         atr = sum(tr_vals) / len(tr_vals) if tr_vals else 0.50
 
-                    # Min SL & TP buffers (Consistent with MQL5 HUD)
-                    sl_dist = max(atr * 2.2, 0.850)
-                    tp_dist = max(atr * 3.8, 1.500)
+                    # Min SL & TP buffers (Consistent with MQL5 HUD Optimized R:R 1:2.13)
+                    sl_dist = max(atr * 1.5, 0.500)
+                    tp_dist = max(atr * 3.2, 1.000)
                     is_bull = (mid >= vwap)
 
                     # Multi-Timeframe (MTF) Strength Analysis: M1, M5, M15, H1
@@ -409,7 +409,7 @@ def mt5_live_poller():
                         },
                         "suggestions": {
                             "bias": "BUY" if is_bull else "SELL",
-                            "rr_ratio": "1:1.73",
+                            "rr_ratio": "1:2.13",
                             "atr": round(atr, 3),
                             "buy": {
                                 "entry": round(tick.ask, 3),

@@ -18,15 +18,19 @@
 input group "=== Execution & Lot Settings ==="
 input ulong    InpMagicNumber       = 20260924;      // Magic Number
 input double   InpBaseLot           = 0.01;          // Base Lot Size (L2 Small Lot)
-input int      InpStopLossPts       = 800;           // Stop Loss in Points (80 pips)
-input int      InpTakeProfitPts     = 1500;          // Take Profit in Points (150 pips)
-input int      InpSlippagePts       = 30;            // Max Allowed Slippage
+input int      InpStopLossPts       = 350;           // Stop Loss Points (35 pips / ~1.5 ATR)
+input int      InpTakeProfitPts     = 750;           // Take Profit Points (75 pips / ~3.2 ATR)
+input int      InpSlippagePts       = 25;            // Max Allowed Slippage
 
-input group "=== 9 Hard Risk Veto Limits ==="
+input group "=== 2-Year Backtest Optimized Risk & Shields ==="
+input bool     InpUseBreakEven      = true;          // Aktifkan Auto BreakEven Shield
+input int      InpBreakEvenTrigger  = 200;           // Trigger BE saat Profit (points)
+input int      InpBreakEvenLock     = 25;            // Kunci Profit BE di atas Entry (points)
+input bool     InpBlockRollover     = true;          // Bekukan Order saat Rollover (03:00-05:00 WIB)
+input double   InpMaxSpreadPts      = 55.0;          // Max Allowed Spread (pts)
 input double   InpMaxDrawdownPct    = 3.0;           // Max Floating Drawdown %
 input double   InpMaxDailyLossUSD   = 50.0;          // Max Daily Loss USD
 input double   InpMaxLotCap         = 0.10;          // Absolute Max Lot Cap
-input double   InpMaxSpreadPts      = 350.0;         // Max Allowed Spread (pts)
 input double   InpMinMarginLevel    = 200.0;         // Min Margin Level %
 input int      InpMaxLatencyMs      = 800;           // Max Response Deadline (ms)
 
@@ -256,8 +260,67 @@ void OnTimer()
 //+------------------------------------------------------------------+
 void OnTick()
 {
+   double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double spread = (ask - bid) / point;
+
+   // 1. Auto BreakEven Management for Active Positions
+   if(InpUseBreakEven)
+   {
+      for(int i = PositionsTotal() - 1; i >= 0; i--)
+      {
+         ulong ticket = PositionGetTicket(i);
+         if(ticket > 0 && PositionGetString(POSITION_SYMBOL) == _Symbol && PositionGetInteger(POSITION_MAGIC) == InpMagicNumber)
+         {
+            long p_type = PositionGetInteger(POSITION_TYPE);
+            double open_p = PositionGetDouble(POSITION_PRICE_OPEN);
+            double cur_sl = PositionGetDouble(POSITION_SL);
+            double cur_tp = PositionGetDouble(POSITION_TP);
+
+            if(p_type == POSITION_TYPE_BUY)
+            {
+               if((bid - open_p) >= (InpBreakEvenTrigger * point))
+               {
+                  double new_sl = NormalizeDouble(open_p + (InpBreakEvenLock * point), _Digits);
+                  if(cur_sl < new_sl || cur_sl == 0.0)
+                  {
+                     g_trade.PositionModify(ticket, new_sl, cur_tp);
+                     PrintFormat("[BE_SHIELD] BUY #%I64d SL moved to BreakEven: %.5f", ticket, new_sl);
+                  }
+               }
+            }
+            else if(p_type == POSITION_TYPE_SELL)
+            {
+               if((open_p - ask) >= (InpBreakEvenTrigger * point))
+               {
+                  double new_sl = NormalizeDouble(open_p - (InpBreakEvenLock * point), _Digits);
+                  if(cur_sl > new_sl || cur_sl == 0.0)
+                  {
+                     g_trade.PositionModify(ticket, new_sl, cur_tp);
+                     PrintFormat("[BE_SHIELD] SELL #%I64d SL moved to BreakEven: %.5f", ticket, new_sl);
+                  }
+               }
+            }
+         }
+      }
+   }
+
    ENUM_FALLBACK_STATE state = g_ladder.GetCurrentState();
    if(state == FALLBACK_KILL || state == FALLBACK_HOLD_LATE)
+      return;
+
+   // Rollover Protection Gate (20:00 - 22:00 UTC / 03:00 - 05:00 WIB)
+   if(InpBlockRollover)
+   {
+      MqlDateTime dt;
+      TimeCurrent(dt);
+      if(dt.hour >= 20 && dt.hour <= 22)
+         return;
+   }
+
+   // Strict Spread Filter
+   if(spread > InpMaxSpreadPts)
       return;
 
    // Only take trades when there are 0 open positions for this symbol/magic
@@ -276,9 +339,9 @@ void OnTick()
       order_lot = NormalizeDouble(InpBaseLot * 0.5, 2);
    if(order_lot < 0.01) order_lot = 0.01;
 
-   double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   // Refresh current bid/ask
+   ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
 
    if(g_ai_direction == "UP" && g_ai_confidence >= 0.70)
    {
