@@ -1,9 +1,12 @@
 """
-FastAPI IPC Bridge Server for MT5 <-> Antigravity Jev Engine
-Owner: jpXCode Pro
+=============================================================================
+⚡ jpXCode Pro - Jev-MT5 High-Frequency Quantitative Trading Framework
+Owner & Author: jpXCode (https://jpxcode.pages.dev)
+Copyright (c) 2026 jpXCode. All Rights Reserved.
+Proprietary Institutional Algorithmic & Sentinel Bridge Engine
+=============================================================================
 Runs on: http://127.0.0.1:8765
 Web UI:  http://127.0.0.1:8765/dashboard/index.html
-Features: WebSocket Real-Time Streaming + Interactive Chart Engine + Panic Flatten
 """
 
 import os
@@ -15,13 +18,17 @@ from typing import List, Optional
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from pydantic import BaseModel
 
 from gemini_client import evaluate_market_state
 from strategy import compose_action
 
-app = FastAPI(title="Jev-MT5 Sentinel Bridge", version="1.1.0")
+app = FastAPI(
+    title="jpXCode Pro - Jev-MT5 Sentinel Bridge",
+    version="1.4.0",
+    description="Proprietary Quantitative HFT Bridge & Dashboard | Copyright 2026 jpXCode"
+)
 
 # Static files mount
 static_dir = os.path.join(os.path.dirname(__file__), "static")
@@ -81,7 +88,26 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "timestamp": time.time()}
+    return {
+        "status": "ok",
+        "author": "jpXCode",
+        "framework": "jpXCode Pro Institutional HFT",
+        "copyright": "Copyright © 2026 jpXCode. All Rights Reserved.",
+        "timestamp": time.time()
+    }
+
+@app.get("/api/info")
+def get_info():
+    return {
+        "app_name": "jpXCode Pro - Jev-MT5 High-Frequency Quantitative Trading Framework",
+        "version": "1.4.0",
+        "author": "jpXCode",
+        "website": "https://jpxcode.pages.dev",
+        "copyright": "Copyright © 2026 jpXCode. All Rights Reserved.",
+        "license": "Proprietary Commercial & Institutional License",
+        "supported_pairs": ["XAUUSDc", "XAUUSD", "BTCUSD", "BTCUSDc"],
+        "architecture": "Deterministic MQL5 Core + Probabilistic AI Bridge"
+    }
 
 @app.get("/api/telemetry")
 def get_telemetry():

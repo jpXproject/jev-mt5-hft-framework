@@ -1,12 +1,12 @@
 //+------------------------------------------------------------------+
 //|                                             JevLoop_HFT_EA.mq5   |
-//|                                    Copyright 2026, jpXCode Pro   |
+//|                    Copyright © 2026 jpXCode. All Rights Reserved. |
 //|         Jev-MT5 24/7 Algorithmic Architecture with Hard Risk Gate|
 //+------------------------------------------------------------------+
-#property copyright   "Copyright 2026, jpXCode Pro"
+#property copyright   "Copyright © 2026 jpXCode. All Rights Reserved."
 #property link        "https://jpxcode.pages.dev"
-#property version     "1.00"
-#property description "Jev-MT5 Deterministic Execution & Probabilistic AI Gate"
+#property version     "1.40"
+#property description "jpXCode Pro Institutional HFT & 24/7 Algorithmic Execution System"
 
 #include <Trade\Trade.mqh>
 #include "..\Include\JevRiskEngine.mqh"

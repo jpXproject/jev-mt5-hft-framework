@@ -1,11 +1,12 @@
 //+------------------------------------------------------------------+
 //|                                            JevSentinel_HUD.mq5   |
-//|                                    Copyright 2026, jpXCode Pro   |
-//|                 On-Chart Visual HUD & Reservation Price Indicator|
+//|                    Copyright © 2026 jpXCode. All Rights Reserved. |
+//|                 Institutional Quant & Real-Time HFT Sentinel HUD |
 //+------------------------------------------------------------------+
-#property copyright   "Copyright 2026, jpXCode Pro"
+#property copyright   "Copyright © 2026 jpXCode. All Rights Reserved."
 #property link        "https://jpxcode.pages.dev"
-#property version     "1.30"
+#property description "jpXCode Pro HFT Framework | Proprietary Trading Sentinel & Execution Engine"
+#property version     "1.40"
 #property indicator_chart_window
 #property indicator_plots 0
 
@@ -171,7 +172,7 @@ void CreatePanel()
    ObjectSetInteger(0, bgName, OBJPROP_XDISTANCE, g_panelX);
    ObjectSetInteger(0, bgName, OBJPROP_YDISTANCE, g_panelY);
    ObjectSetInteger(0, bgName, OBJPROP_XSIZE, S(310));
-   ObjectSetInteger(0, bgName, OBJPROP_YSIZE, S(330));
+   ObjectSetInteger(0, bgName, OBJPROP_YSIZE, S(360));
    ObjectSetInteger(0, bgName, OBJPROP_BGCOLOR, InpBgColor);
    ObjectSetInteger(0, bgName, OBJPROP_BORDER_COLOR, InpBorderColor);
 
@@ -319,8 +320,10 @@ void UpdateHUD()
    string stat_str = "Geser Header untuk Drag | Klik Tombol Aksi:";
    CreateLabel("BTN_HINT", g_panelX + S(12), g_panelY + S(224), stat_str, clrLightSteelBlue, 8, false);
 
-   // 6. Action Feedback Label
+   // 6. Action Feedback Label & Author Brand Legacy
    CreateLabel("ACTION_FEEDBACK", g_panelX + S(12), g_panelY + S(294), "Siap eksekusi / copy", clrDarkGray, 8, false);
+   CreateLabel("FOOTER_BRAND", g_panelX + S(12), g_panelY + S(314), "⚡ jpXCode Pro © 2026 | All Rights Reserved", clrDarkCyan, 7, true);
+   CreateLabel("FOOTER_LINK", g_panelX + S(12), g_panelY + S(330), "Author: jpXCode | https://jpxcode.pages.dev", clrSlateGray, 7, false);
 
    // 7. Update Chart Lines
    if(InpShowReservLine)
