@@ -249,20 +249,104 @@
     </div>
   </div>
 
-  <!-- Suggested SL/TP Box (AI Execution Engine) -->
-  <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:10px; padding:12px 18px; margin-bottom:15px; box-shadow:0 4px 15px rgba(0,0,0,0.3); display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px;">
-    <div style="background:rgba(0,255,136,0.05); border:1px solid rgba(0,255,136,0.2); border-radius:8px; padding:10px;">
-      <div style="font-size:11px; font-weight:700; color:var(--accent-green); margin-bottom:4px;">🟢 SARAN POSISI BUY</div>
-      <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-main);" id="sugg-buy-val">Memuat kalkulasi SL/TP...</div>
+  <!-- ======================================================== -->
+  <!-- 🎛️ PANEL INTERAKTIF EKSEKUSI, SARAN SL/TP, & KEKUATAN PASAR -->
+  <!-- ======================================================== -->
+  <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:16px 20px; margin-bottom:15px; box-shadow:0 6px 20px rgba(0,0,0,0.35);">
+    
+    <!-- Bagian 1: Meter Kekuatan BUY vs SELL -->
+    <div style="margin-bottom:14px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <span style="font-size:12px; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:6px;">
+          ⚡ KEKUATAN PASAR (BUY vs SELL POWER)
+          <span class="badge" id="strength-badge" style="background:rgba(0,240,255,0.15); color:var(--accent-cyan); border:1px solid var(--accent-cyan); font-size:10px;">ANALYZING...</span>
+        </span>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700;">
+          <span style="color:var(--accent-green);" id="strength-buy-text">BUY 50%</span>
+          <span style="color:var(--text-muted); margin:0 4px;">:</span>
+          <span style="color:var(--accent-red);" id="strength-sell-text">SELL 50%</span>
+        </div>
+      </div>
+      <!-- Dual Strength Progress Bar -->
+      <div style="width:100%; height:12px; background:#1e293b; border-radius:6px; overflow:hidden; display:flex; border:1px solid rgba(255,255,255,0.1);">
+        <div id="strength-buy-bar" style="width:50%; height:100%; background:linear-gradient(90deg, #10b981, #00f0ff); transition:width 0.3s ease;"></div>
+        <div id="strength-sell-bar" style="width:50%; height:100%; background:linear-gradient(90deg, #ef4444, #f97316); transition:width 0.3s ease;"></div>
+      </div>
     </div>
-    <div style="background:rgba(255,75,75,0.05); border:1px solid rgba(255,75,75,0.2); border-radius:8px; padding:10px;">
-      <div style="font-size:11px; font-weight:700; color:var(--accent-red); margin-bottom:4px;">🔴 SARAN POSISI SELL</div>
-      <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-main);" id="sugg-sell-val">Memuat kalkulasi SL/TP...</div>
+
+    <!-- Bagian 2: Kartu Saran AI BUY & SELL + Tombol Copy Nilai SL/TP -->
+    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin-bottom:14px;">
+      
+      <!-- Kartu Saran BUY -->
+      <div style="background:rgba(0,255,136,0.04); border:1px solid rgba(0,255,136,0.25); border-radius:8px; padding:10px 12px; position:relative;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:11px; font-weight:700; color:var(--accent-green);">🟢 SARAN POSISI BUY</span>
+          <button onclick="copySLTP('BUY')" class="btn" style="padding:2px 8px; font-size:10px; background:rgba(0,255,136,0.2); color:var(--accent-green); border:1px solid var(--accent-green); cursor:pointer;">
+            📋 Copy SL/TP
+          </button>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-main); line-height:1.5;" id="sugg-buy-val">
+          Entry: <b style="color:var(--accent-green);">-</b><br>
+          SL: <span style="color:var(--accent-red);">-</span> | TP: <span style="color:var(--accent-green);">-</span>
+        </div>
+      </div>
+
+      <!-- Kartu Saran SELL -->
+      <div style="background:rgba(255,75,75,0.04); border:1px solid rgba(255,75,75,0.25); border-radius:8px; padding:10px 12px; position:relative;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:11px; font-weight:700; color:var(--accent-red);">🔴 SARAN POSISI SELL</span>
+          <button onclick="copySLTP('SELL')" class="btn" style="padding:2px 8px; font-size:10px; background:rgba(255,75,75,0.2); color:var(--accent-red); border:1px solid var(--accent-red); cursor:pointer;">
+            📋 Copy SL/TP
+          </button>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-main); line-height:1.5;" id="sugg-sell-val">
+          Entry: <b style="color:var(--accent-red);">-</b><br>
+          SL: <span style="color:var(--accent-red);">-</span> | TP: <span style="color:var(--accent-green);">-</span>
+        </div>
+      </div>
+
+      <!-- Kartu Bias & Rasio R:R -->
+      <div style="background:rgba(0,240,255,0.04); border:1px solid rgba(0,240,255,0.25); border-radius:8px; padding:10px 12px;">
+        <div style="font-size:11px; font-weight:700; color:var(--accent-cyan); margin-bottom:6px;">🎯 BIAS PASAR & REKOMENDASI</div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-main); line-height:1.5;" id="sugg-bias-val">
+          Bias: <b id="bias-direction">-</b><br>
+          Rasio R:R: <span style="color:var(--accent-gold);">1 : 1.73</span> | ATR: <span id="atr-val">-</span>
+        </div>
+      </div>
     </div>
-    <div style="background:rgba(0,240,255,0.05); border:1px solid rgba(0,240,255,0.2); border-radius:8px; padding:10px;">
-      <div style="font-size:11px; font-weight:700; color:var(--accent-cyan); margin-bottom:4px;">🎯 BIAS PASAR & RASIO R:R</div>
-      <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-main);" id="sugg-bias-val">Menghitung...</div>
+
+    <!-- Bagian 3: Panel Eksekusi Interaktif (Instant One-Click BUY/SELL) -->
+    <div style="background:rgba(15,23,42,0.6); border:1px solid var(--border); border-radius:8px; padding:12px 14px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px;">
+      
+      <!-- Input Lot & Pengaturan SL/TP Otomatis -->
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="display:flex; align-items:center; gap:6px;">
+          <label style="font-size:11px; font-weight:700; color:var(--text-muted);">LOT:</label>
+          <input type="number" id="trade-lot-input" value="0.01" step="0.01" min="0.01" max="0.10" style="width:70px; background:#0f172a; border:1px solid var(--border); color:#fff; border-radius:4px; padding:4px 8px; font-family:'JetBrains Mono',monospace; font-weight:bold; font-size:12px; text-align:center;">
+        </div>
+        <label style="display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text-muted); cursor:pointer;">
+          <input type="checkbox" id="trade-use-sltp" checked style="cursor:pointer; accent-color:var(--accent-cyan);">
+          Pakai Saran SL & TP Otomatis
+        </label>
+      </div>
+
+      <!-- Tombol Eksekusi Instan -->
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button id="btn-instant-buy" onclick="executeWebTrade('BUY')" class="btn" style="background:#059669; color:#fff; font-weight:bold; padding:8px 20px; font-size:12px; border-radius:6px; display:flex; align-items:center; gap:6px; border:none; cursor:pointer; box-shadow:0 0 10px rgba(16,185,129,0.3);">
+          🟢 INSTANT BUY
+        </button>
+        <button id="btn-instant-sell" onclick="executeWebTrade('SELL')" class="btn" style="background:#dc2626; color:#fff; font-weight:bold; padding:8px 20px; font-size:12px; border-radius:6px; display:flex; align-items:center; gap:6px; border:none; cursor:pointer; box-shadow:0 0 10px rgba(239,68,68,0.3);">
+          🔴 INSTANT SELL
+        </button>
+      </div>
+
+      <!-- Status Toast / Pesan Feedback -->
+      <div style="width:100%; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-muted); padding-top:4px; border-top:1px dashed rgba(255,255,255,0.08); display:flex; justify-content:space-between; align-items:center;">
+        <span id="trade-status-msg">💡 Status: Siap eksekusi langsung ke MT5 Terminal</span>
+        <span id="clipboard-toast" style="color:var(--accent-cyan); font-weight:bold; display:none;">📋 Nilai berhasil disalin!</span>
+      </div>
     </div>
+
   </div>
 
   <div class="grid-metrics" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
@@ -554,6 +638,67 @@
       ctx.fill();
     }
 
+    let latestSuggestions = null;
+
+    function copySLTP(type) {
+      if(!latestSuggestions) {
+        alert("Data saran SL/TP belum tersedia!");
+        return;
+      }
+      const item = type === 'BUY' ? latestSuggestions.buy : latestSuggestions.sell;
+      if(!item) return;
+      const text = `XAUUSD ${type} @ ${item.entry} | SL: ${item.sl} | TP: ${item.tp} (R:R 1:1.73)`;
+      navigator.clipboard.writeText(text).then(() => {
+        const toast = document.getElementById('clipboard-toast');
+        if(toast) {
+          toast.innerText = `📋 Nilai ${type} (${item.sl} / ${item.tp}) berhasil disalin!`;
+          toast.style.display = 'inline';
+          setTimeout(() => { toast.style.display = 'none'; }, 2500);
+        }
+      }).catch(err => {
+        prompt("Salin teks berikut:", text);
+      });
+    }
+
+    async function executeWebTrade(action) {
+      const lotInput = document.getElementById('trade-lot-input');
+      const useSLTP = document.getElementById('trade-use-sltp').checked;
+      const statusMsg = document.getElementById('trade-status-msg');
+      const lot = parseFloat(lotInput ? lotInput.value : 0.01) || 0.01;
+
+      let sl = 0.0, tp = 0.0;
+      if(useSLTP && latestSuggestions) {
+        const s = action === 'BUY' ? latestSuggestions.buy : latestSuggestions.sell;
+        if(s) {
+          sl = s.sl;
+          tp = s.tp;
+        }
+      }
+
+      if(!confirm(`⚠️ Konfirmasi eksekusi ${action} ${lot} LOT XAUUSDc ke akun MT5?\nSL: ${sl} | TP: ${tp}`)) return;
+
+      statusMsg.innerHTML = `⏳ Mengirim order ${action} ${lot} lot ke MT5...`;
+      try {
+        const res = await fetch('/api/order/execute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ symbol: 'XAUUSDc', action: action, volume: lot, sl: sl, tp: tp })
+        });
+        const data = await res.json();
+        if(data.status === 'success') {
+          statusMsg.innerHTML = `✅ <b>Order ${action} Berhasil!</b> Tiket #${data.order} @ ${data.price} | SL: ${data.sl} | TP: ${data.tp}`;
+          statusMsg.style.color = 'var(--accent-green)';
+          updateDashboard();
+        } else {
+          statusMsg.innerHTML = `❌ <b>Order Gagal:</b> ${data.message || 'Ditolak broker'}`;
+          statusMsg.style.color = 'var(--accent-red)';
+        }
+      } catch(e) {
+        statusMsg.innerHTML = `❌ Gagal menghubungi bridge server: ${e}`;
+        statusMsg.style.color = 'var(--accent-red)';
+      }
+    }
+
     async function triggerPanicFlatten() {
       if(!confirm("⚠️ PERINGATAN: Tutup SEMUA posisi aktif di MT5 sekarang?")) return;
       try {
@@ -624,21 +769,52 @@
               if(stageEl) stageEl.innerText = stageNames[rec.stage] || `STAGE ${rec.stage}`;
             }
 
+            // Update Strength Gauge (BUY vs SELL Power)
+            if(snap.strength) {
+              const st = snap.strength;
+              const buyText = document.getElementById('strength-buy-text');
+              const sellText = document.getElementById('strength-sell-text');
+              const buyBar = document.getElementById('strength-buy-bar');
+              const sellBar = document.getElementById('strength-sell-bar');
+              const badge = document.getElementById('strength-badge');
+
+              if(buyText) buyText.innerText = `BUY ${st.buy_pct}%`;
+              if(sellText) sellText.innerText = `SELL ${st.sell_pct}%`;
+              if(buyBar) buyBar.style.width = `${st.buy_pct}%`;
+              if(sellBar) sellBar.style.width = `${st.sell_pct}%`;
+              if(badge) {
+                badge.innerText = st.label;
+                const isBuyDom = st.dominant === 'BUY';
+                badge.style.color = isBuyDom ? 'var(--accent-green)' : 'var(--accent-red)';
+                badge.style.borderColor = isBuyDom ? 'var(--accent-green)' : 'var(--accent-red)';
+                badge.style.background = isBuyDom ? 'rgba(0,255,136,0.1)' : 'rgba(255,75,75,0.1)';
+              }
+            }
+
+            // Update AI Suggestions & SL/TP
             if(snap.suggestions) {
+              latestSuggestions = snap.suggestions;
               const sugg = snap.suggestions;
               const buyEl = document.getElementById('sugg-buy-val');
               const sellEl = document.getElementById('sugg-sell-val');
-              const biasEl = document.getElementById('sugg-bias-val');
+              const biasDirEl = document.getElementById('bias-direction');
+              const atrEl = document.getElementById('atr-val');
+
               if(buyEl && sugg.buy) {
-                buyEl.innerText = `Entry: ${sugg.buy.entry.toFixed(3)} | SL: ${sugg.buy.sl.toFixed(3)} | TP: ${sugg.buy.tp.toFixed(3)}`;
+                buyEl.innerHTML = `Entry: <b style="color:var(--accent-green);">${sugg.buy.entry.toFixed(3)}</b><br>` +
+                                  `SL: <span style="color:var(--accent-red);">${sugg.buy.sl.toFixed(3)}</span> | ` +
+                                  `TP: <span style="color:var(--accent-green);">${sugg.buy.tp.toFixed(3)}</span>`;
               }
               if(sellEl && sugg.sell) {
-                sellEl.innerText = `Entry: ${sugg.sell.entry.toFixed(3)} | SL: ${sugg.sell.sl.toFixed(3)} | TP: ${sugg.sell.tp.toFixed(3)}`;
+                sellEl.innerHTML = `Entry: <b style="color:var(--accent-red);">${sugg.sell.entry.toFixed(3)}</b><br>` +
+                                   `SL: <span style="color:var(--accent-red);">${sugg.sell.sl.toFixed(3)}</span> | ` +
+                                   `TP: <span style="color:var(--accent-green);">${sugg.sell.tp.toFixed(3)}</span>`;
               }
-              if(biasEl) {
-                biasEl.innerText = `Bias: ${sugg.bias} | R:R ${sugg.rr_ratio} | ATR: ${sugg.atr.toFixed(3)}`;
-                biasEl.style.color = sugg.bias === 'BUY' ? 'var(--accent-green)' : 'var(--accent-red)';
+              if(biasDirEl) {
+                biasDirEl.innerText = sugg.bias === 'BUY' ? 'BULLISH (BUY)' : 'BEARISH (SELL)';
+                biasDirEl.style.color = sugg.bias === 'BUY' ? 'var(--accent-green)' : 'var(--accent-red)';
               }
+              if(atrEl) atrEl.innerText = sugg.atr.toFixed(3);
             }
           }
 

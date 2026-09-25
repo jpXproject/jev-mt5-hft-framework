@@ -147,6 +147,62 @@ def panic_flatten():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+@app.post("/api/order/execute")
+async def api_order_execute(req_data: dict):
+    try:
+        import MetaTrader5 as mt5
+        if not mt5.initialize():
+            return {"status": "error", "message": "Failed to connect to MT5"}
+        
+        symbol = req_data.get("symbol", "XAUUSDc")
+        action = req_data.get("action", "BUY").upper()
+        lot = float(req_data.get("volume", 0.01))
+        sl = float(req_data.get("sl", 0.0))
+        tp = float(req_data.get("tp", 0.0))
+        
+        tick = mt5.symbol_info_tick(symbol)
+        if not tick:
+            return {"status": "error", "message": f"Tick for {symbol} unavailable"}
+        
+        price = tick.ask if action == "BUY" else tick.bid
+        order_type = mt5.ORDER_TYPE_BUY if action == "BUY" else mt5.ORDER_TYPE_SELL
+        
+        req = {
+            "action": mt5.TRADE_ACTION_DEAL,
+            "symbol": symbol,
+            "volume": lot,
+            "type": order_type,
+            "price": price,
+            "sl": sl,
+            "tp": tp,
+            "deviation": 25,
+            "magic": 20260925,
+            "comment": f"Jev WebPanel {action}",
+            "type_time": mt5.ORDER_TIME_GTC,
+            "type_filling": mt5.ORDER_FILLING_IOC,
+        }
+        res = mt5.order_send(req)
+        if res and res.retcode != mt5.TRADE_RETCODE_DONE:
+            req["type_filling"] = mt5.ORDER_FILLING_RETURN
+            res = mt5.order_send(req)
+        
+        if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+            return {
+                "status": "success",
+                "order": res.order,
+                "deal": res.deal,
+                "price": price,
+                "action": action,
+                "lot": lot,
+                "sl": sl,
+                "tp": tp
+            }
+        else:
+            err_msg = res.comment if res else "Unknown execution error"
+            return {"status": "error", "message": err_msg, "retcode": res.retcode if res else -1}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
@@ -248,6 +304,21 @@ def mt5_live_poller():
                     tp_dist = max(atr * 3.8, 1.500)
                     is_bull = (mid >= vwap)
 
+                    # Calculate Market Power & Strength (BUY vs SELL: 0-100%)
+                    strength_score = 50.0
+                    vwap_diff = (mid - vwap)
+                    strength_score += max(-20.0, min(20.0, (vwap_diff / (atr if atr > 0 else 1.0)) * 20.0))
+                    if rates is not None and len(rates) >= 4:
+                        bar_delta = rates[-1]['close'] - rates[-4]['close']
+                        strength_score += max(-15.0, min(15.0, (bar_delta / (atr if atr > 0 else 1.0)) * 15.0))
+                    skew_diff = (mid - reserv_price)
+                    strength_score += max(-15.0, min(15.0, skew_diff * 10.0))
+
+                    buy_power = round(max(5.0, min(95.0, strength_score)), 1)
+                    sell_power = round(100.0 - buy_power, 1)
+                    dominant_power = "BUY" if buy_power >= 50.0 else "SELL"
+                    strength_label = "BULLISH DOMINANT" if buy_power >= 60.0 else ("BEARISH DOMINANT" if buy_power <= 40.0 else "NEUTRAL / CHOPPY")
+
                     snap = {
                         "as_of": int(tick.time),
                         "symbol": symbol,
@@ -274,6 +345,12 @@ def mt5_live_poller():
                             "progress_pct": round(rec_pct, 2),
                             "remaining_usc": round(rec_rem, 2),
                             "stage": rec_stage
+                        },
+                        "strength": {
+                            "buy_pct": buy_power,
+                            "sell_pct": sell_power,
+                            "dominant": dominant_power,
+                            "label": strength_label
                         },
                         "suggestions": {
                             "bias": "BUY" if is_bull else "SELL",
