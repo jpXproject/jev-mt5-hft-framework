@@ -290,8 +290,8 @@
       </div>
     </div>
 
-    <!-- Bagian 2: Kartu Saran AI BUY & SELL + Tombol Copy Nilai SL/TP -->
-    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin-bottom:14px;">
+    <!-- Bagian 2: Kartu Saran BUY/SELL + KEKUATAN MTF (M1, M5, M15, H1) + BIAS -->
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap:12px; margin-bottom:14px;">
       
       <!-- Kartu Saran BUY -->
       <div style="background:rgba(0,255,136,0.04); border:1px solid rgba(0,255,136,0.25); border-radius:8px; padding:10px 12px; position:relative;">
@@ -318,6 +318,48 @@
         <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-main); line-height:1.5;" id="sugg-sell-val">
           Entry: <b style="color:var(--accent-red);">-</b><br>
           SL: <span style="color:var(--accent-red);">-</span> | TP: <span style="color:var(--accent-green);">-</span>
+        </div>
+      </div>
+
+      <!-- Kartu KEKUATAN PASAR MULTI-TIMEFRAME (M1, M5, M15, H1) -->
+      <div style="background:rgba(255,215,0,0.04); border:1px solid rgba(255,215,0,0.25); border-radius:8px; padding:10px 12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:11px; font-weight:700; color:var(--accent-gold);">📊 KEKUATAN MTF (M1-H1)</span>
+          <span id="mtf-overall-badge" style="font-size:10px; font-weight:bold; color:var(--accent-cyan); font-family:'JetBrains Mono',monospace;">COMPOSITE</span>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:10px; display:flex; flex-direction:column; gap:4px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:#94a3b8; width:28px;">M1:</span>
+            <div style="flex:1; height:6px; background:#1e293b; border-radius:3px; margin:0 6px; overflow:hidden; display:flex;">
+              <div id="m1-bar" style="width:50%; background:#10b981;"></div>
+              <div style="flex:1; background:#ef4444;"></div>
+            </div>
+            <span id="m1-txt" style="color:#f8fafc; font-weight:600; width:72px; text-align:right;">B 50% | S 50%</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:#94a3b8; width:28px;">M5:</span>
+            <div style="flex:1; height:6px; background:#1e293b; border-radius:3px; margin:0 6px; overflow:hidden; display:flex;">
+              <div id="m5-bar" style="width:50%; background:#10b981;"></div>
+              <div style="flex:1; background:#ef4444;"></div>
+            </div>
+            <span id="m5-txt" style="color:#f8fafc; font-weight:600; width:72px; text-align:right;">B 50% | S 50%</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:#94a3b8; width:28px;">M15:</span>
+            <div style="flex:1; height:6px; background:#1e293b; border-radius:3px; margin:0 6px; overflow:hidden; display:flex;">
+              <div id="m15-bar" style="width:50%; background:#10b981;"></div>
+              <div style="flex:1; background:#ef4444;"></div>
+            </div>
+            <span id="m15-txt" style="color:#f8fafc; font-weight:600; width:72px; text-align:right;">B 50% | S 50%</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:#94a3b8; width:28px;">H1:</span>
+            <div style="flex:1; height:6px; background:#1e293b; border-radius:3px; margin:0 6px; overflow:hidden; display:flex;">
+              <div id="h1-bar" style="width:50%; background:#10b981;"></div>
+              <div style="flex:1; background:#ef4444;"></div>
+            </div>
+            <span id="h1-txt" style="color:#f8fafc; font-weight:600; width:72px; text-align:right;">B 50% | S 50%</span>
+          </div>
         </div>
       </div>
 
@@ -825,6 +867,28 @@
                 badge.style.color = isBuyDom ? 'var(--accent-green)' : 'var(--accent-red)';
                 badge.style.borderColor = isBuyDom ? 'var(--accent-green)' : 'var(--accent-red)';
                 badge.style.background = isBuyDom ? 'rgba(0,255,136,0.1)' : 'rgba(255,75,75,0.1)';
+              }
+            }
+
+            // Update Multi-Timeframe (MTF) Strength: M1, M5, M15, H1
+            if(snap.mtf_strength) {
+              const mtf = snap.mtf_strength;
+              ['M1', 'M5', 'M15', 'H1'].forEach(tf => {
+                const item = mtf[tf];
+                if(item) {
+                  const bar = document.getElementById(`${tf.toLowerCase()}-bar`);
+                  const txt = document.getElementById(`${tf.toLowerCase()}-txt`);
+                  if(bar) bar.style.width = `${item.buy}%`;
+                  if(txt) {
+                    txt.innerText = `B ${Math.round(item.buy)}% | S ${Math.round(item.sell)}%`;
+                    txt.style.color = item.buy >= 55 ? 'var(--accent-green)' : (item.buy <= 45 ? 'var(--accent-red)' : '#f8fafc');
+                  }
+                }
+              });
+              const overallBadge = document.getElementById('mtf-overall-badge');
+              if(overallBadge && mtf.overall) {
+                overallBadge.innerText = mtf.overall.label;
+                overallBadge.style.color = mtf.overall.buy >= 50 ? 'var(--accent-green)' : 'var(--accent-red)';
               }
             }
 

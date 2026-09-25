@@ -172,7 +172,7 @@ void CreatePanel()
    ObjectSetInteger(0, bgName, OBJPROP_XDISTANCE, g_panelX);
    ObjectSetInteger(0, bgName, OBJPROP_YDISTANCE, g_panelY);
    ObjectSetInteger(0, bgName, OBJPROP_XSIZE, S(310));
-   ObjectSetInteger(0, bgName, OBJPROP_YSIZE, S(360));
+   ObjectSetInteger(0, bgName, OBJPROP_YSIZE, S(385));
    ObjectSetInteger(0, bgName, OBJPROP_BGCOLOR, InpBgColor);
    ObjectSetInteger(0, bgName, OBJPROP_BORDER_COLOR, InpBorderColor);
 
@@ -197,10 +197,10 @@ void CreatePanel()
    CreateButton("BTN_SC_R", g_panelX + S(234), g_panelY + S(3), S(38), S(22), "100%", C'35,45,65', clrWhite, 7);
    CreateButton("BTN_SC_P", g_panelX + S(274), g_panelY + S(3), S(32), S(22), "+25%", C'35,45,65', clrAqua, 7);
 
-   // Interactive Execution & Action Buttons
-   CreateButton("BTN_BUY", g_panelX + S(12), g_panelY + S(260), S(90), S(28), "BUY 0.01", C'5,150,105', clrWhite, 8);
-   CreateButton("BTN_SELL", g_panelX + S(108), g_panelY + S(260), S(90), S(28), "SELL 0.01", C'220,38,38', clrWhite, 8);
-   CreateButton("BTN_COPY", g_panelX + S(204), g_panelY + S(260), S(94), S(28), "COPY SL/TP", C'30,58,138', clrWhite, 8);
+   // Interactive Execution & Action Buttons (Repositioned to Y+262)
+   CreateButton("BTN_BUY", g_panelX + S(12), g_panelY + S(262), S(90), S(28), "BUY 0.01", C'5,150,105', clrWhite, 8);
+   CreateButton("BTN_SELL", g_panelX + S(108), g_panelY + S(262), S(90), S(28), "SELL 0.01", C'220,38,38', clrWhite, 8);
+   CreateButton("BTN_COPY", g_panelX + S(204), g_panelY + S(262), S(94), S(28), "COPY SL/TP", C'30,58,138', clrWhite, 8);
 }
 
 //+------------------------------------------------------------------+
@@ -228,6 +228,55 @@ void UpdateChartLine(const string name, double price, color clr, int style, stri
       ObjectSetDouble(0, objName, OBJPROP_PRICE, price);
       ObjectSetString(0, objName, OBJPROP_TEXT, desc);
    }
+}
+
+//+------------------------------------------------------------------+
+//| Multi-Timeframe (MTF) Momentum & Power Calculator               |
+//+------------------------------------------------------------------+
+double CalcTFPower(ENUM_TIMEFRAMES tf, double atr)
+{
+   double c0 = iClose(_Symbol, tf, 0);
+   double o0 = iOpen(_Symbol, tf, 0);
+   double c3 = iClose(_Symbol, tf, 3);
+   double ma14 = 0.0;
+   for(int i = 0; i < 14; i++) ma14 += iClose(_Symbol, tf, i);
+   ma14 /= 14.0;
+   
+   double score = 50.0;
+   if(c0 > o0) score += 15.0;
+   else if(c0 < o0) score -= 15.0;
+   
+   if(c0 > ma14) score += 15.0;
+   else if(c0 < ma14) score -= 15.0;
+   
+   double delta4 = c0 - c3;
+   score += MathMax(-15.0, MathMin(15.0, (delta4 / (atr > 0 ? atr : 1.0)) * 15.0));
+   return MathMax(5.0, MathMin(95.0, score));
+}
+
+//+------------------------------------------------------------------+
+//| Helper to read simple numeric value from JSON string             |
+//+------------------------------------------------------------------+
+double ParseJsonNumber(string json, string key, double default_val)
+{
+   string needle = "\"" + key + "\":";
+   int pos = StringFind(json, needle);
+   if(pos < 0) return default_val;
+   int start = pos + StringLen(needle);
+   while(start < StringLen(json) && (StringGetCharacter(json, start) == ' ' || StringGetCharacter(json, start) == '\t'))
+      start++;
+   int end = start;
+   while(end < StringLen(json))
+   {
+      ushort ch = StringGetCharacter(json, end);
+      if((ch >= '0' && ch <= '9') || ch == '.' || ch == '-')
+         end++;
+      else
+         break;
+   }
+   if(end > start)
+      return StringToDouble(StringSubstr(json, start, end - start));
+   return default_val;
 }
 
 //+------------------------------------------------------------------+
@@ -271,13 +320,51 @@ void UpdateHUD()
    g_last_sell_sl = sell_sl;
    g_last_sell_tp = sell_tp;
 
+   // Multi-Timeframe (MTF) Momentum Calculation: M1, M5, M15, H1
+   double m1_p = CalcTFPower(PERIOD_M1, atr_val);
+   double m5_p = CalcTFPower(PERIOD_M5, atr_val);
+   double m15_p = CalcTFPower(PERIOD_M15, atr_val);
+   double h1_p = CalcTFPower(PERIOD_H1, atr_val);
+   double buy_power = MathRound((m1_p * 0.20) + (m5_p * 0.35) + (m15_p * 0.25) + (h1_p * 0.20));
+   double sell_power = 100.0 - buy_power;
+
+   // Try reading bridge telemetry JSON if available for 100% exact sync
+   int handle = FileOpen("jev_telemetry.json", FILE_READ|FILE_TXT|FILE_COMMON);
+   if(handle != INVALID_HANDLE)
+   {
+      string json_content = "";
+      while(!FileIsEnding(handle))
+         json_content += FileReadString(handle);
+      FileClose(handle);
+
+      if(StringLen(json_content) > 10)
+      {
+         double f_bp = ParseJsonNumber(json_content, "buy_power", -1.0);
+         if(f_bp >= 0.0)
+         {
+            buy_power = f_bp;
+            sell_power = 100.0 - buy_power;
+            m1_p = ParseJsonNumber(json_content, "m1_buy", m1_p);
+            m5_p = ParseJsonNumber(json_content, "m5_buy", m5_p);
+            m15_p = ParseJsonNumber(json_content, "m15_buy", m15_p);
+            h1_p = ParseJsonNumber(json_content, "h1_buy", h1_p);
+            buy_sl = ParseJsonNumber(json_content, "buy_sl", buy_sl);
+            buy_tp = ParseJsonNumber(json_content, "buy_tp", buy_tp);
+            sell_sl = ParseJsonNumber(json_content, "sell_sl", sell_sl);
+            sell_tp = ParseJsonNumber(json_content, "sell_tp", sell_tp);
+         }
+      }
+   }
+
+   g_last_buy_sl = buy_sl;
+   g_last_buy_tp = buy_tp;
+   g_last_sell_sl = sell_sl;
+   g_last_sell_tp = sell_tp;
+
    // Dominant Bias & Power Score
    bool is_bullish = (snap.mid_price >= snap.session_vwap);
-   double vwap_delta = (snap.mid_price - snap.session_vwap) / (atr_val > 0 ? atr_val : 1.0);
-   double buy_power = 50.0 + MathMax(-35.0, MathMin(35.0, vwap_delta * 25.0));
-   double sell_power = 100.0 - buy_power;
-   string dominant_bias = is_bullish ? "BUY (Above VWAP)" : "SELL (Below VWAP)";
-   color bias_color = is_bullish ? InpAccentGreen : InpAccentRed;
+   string dominant_bias = buy_power >= 50.0 ? "BUY (Bullish Flow)" : "SELL (Bearish Flow)";
+   color bias_color = buy_power >= 50.0 ? InpAccentGreen : InpAccentRed;
 
    // 1. Header (Title + Drag Hint)
    string sc_pct = StringFormat("%.0f%%", g_scale * 100.0);
@@ -293,37 +380,40 @@ void UpdateHUD()
    string v_str = StringFormat("Session VWAP: %.3f", snap.session_vwap);
    CreateLabel("VWAP", g_panelX + S(12), g_panelY + S(72), v_str, clrSilver, 9);
 
-   // 3. KEKUATAN BUY vs SELL
+   // 3. KEKUATAN BUY vs SELL & PARAMETER MTF (M1, M5, M15, H1)
    string pwr_str = StringFormat("Kekuatan: BUY %.0f%% | SELL %.0f%%", buy_power, sell_power);
    color pwr_color = buy_power >= 50.0 ? InpAccentGreen : InpAccentRed;
-   CreateLabel("POWER", g_panelX + S(12), g_panelY + S(92), pwr_str, pwr_color, 9, true);
+   CreateLabel("POWER", g_panelX + S(12), g_panelY + S(90), pwr_str, pwr_color, 9, true);
+
+   string mtf_str = StringFormat("MTF: M1[%.0f%%] M5[%.0f%%] M15[%.0f%%] H1[%.0f%%]", m1_p, m5_p, m15_p, h1_p);
+   CreateLabel("MTF_POWER", g_panelX + S(12), g_panelY + S(108), mtf_str, clrSkyBlue, 8, true);
 
    // 4. SARAN SL & TP SECTION
-   CreateLabel("SEP", g_panelX + S(12), g_panelY + S(112), "── SARAN SL / TP (AI QUANT) ──", clrGray, 8, true);
+   CreateLabel("SEP", g_panelX + S(12), g_panelY + S(126), "── SARAN SL / TP (AI QUANT) ──", clrGray, 8, true);
 
    string buy_str = StringFormat("🟢 BUY  SL: %.3f | TP: %.3f", buy_sl, buy_tp);
-   CreateLabel("SUGG_BUY", g_panelX + S(12), g_panelY + S(130), buy_str, InpAccentGreen, 9, is_bullish);
+   CreateLabel("SUGG_BUY", g_panelX + S(12), g_panelY + S(144), buy_str, InpAccentGreen, 9, is_bullish);
 
    string sell_str = StringFormat("🔴 SELL SL: %.3f | TP: %.3f", sell_sl, sell_tp);
-   CreateLabel("SUGG_SELL", g_panelX + S(12), g_panelY + S(148), sell_str, InpAccentRed, 9, !is_bullish);
+   CreateLabel("SUGG_SELL", g_panelX + S(12), g_panelY + S(162), sell_str, InpAccentRed, 9, !is_bullish);
 
    string bias_str = StringFormat("🎯 Bias: %s (R:R 1:1.73)", dominant_bias);
-   CreateLabel("BIAS", g_panelX + S(12), g_panelY + S(168), bias_str, bias_color, 9, true);
+   CreateLabel("BIAS", g_panelX + S(12), g_panelY + S(182), bias_str, bias_color, 9, true);
 
    // 5. Battery & Volatility
    string dir_str = StringFormat("ATR: %.3f | Vol Buffer: %.0f pts", atr_val, sl_dist / point);
-   CreateLabel("FLOW", g_panelX + S(12), g_panelY + S(188), dir_str, clrSkyBlue, 8);
+   CreateLabel("FLOW", g_panelX + S(12), g_panelY + S(202), dir_str, clrLightSlateGray, 8);
 
    string rec_str = StringFormat("Target Recovery: 1,000 USC | Skala: %s", sc_pct);
-   CreateLabel("REC_GOAL", g_panelX + S(12), g_panelY + S(206), rec_str, clrGold, 8, true);
+   CreateLabel("REC_GOAL", g_panelX + S(12), g_panelY + S(220), rec_str, clrGold, 8, true);
 
    string stat_str = "Geser Header untuk Drag | Klik Tombol Aksi:";
-   CreateLabel("BTN_HINT", g_panelX + S(12), g_panelY + S(224), stat_str, clrLightSteelBlue, 8, false);
+   CreateLabel("BTN_HINT", g_panelX + S(12), g_panelY + S(238), stat_str, clrLightSteelBlue, 8, false);
 
    // 6. Action Feedback Label & Author Brand Legacy
-   CreateLabel("ACTION_FEEDBACK", g_panelX + S(12), g_panelY + S(294), "Siap eksekusi / copy", clrDarkGray, 8, false);
-   CreateLabel("FOOTER_BRAND", g_panelX + S(12), g_panelY + S(314), "⚡ jpXCode Pro © 2026 | All Rights Reserved", clrDarkCyan, 7, true);
-   CreateLabel("FOOTER_LINK", g_panelX + S(12), g_panelY + S(330), "Author: jpXCode | https://jpxcode.pages.dev", clrSlateGray, 7, false);
+   CreateLabel("ACTION_FEEDBACK", g_panelX + S(12), g_panelY + S(296), "Siap eksekusi / copy", clrDarkGray, 8, false);
+   CreateLabel("FOOTER_BRAND", g_panelX + S(12), g_panelY + S(318), "⚡ jpXCode Pro © 2026 | All Rights Reserved", clrDarkCyan, 7, true);
+   CreateLabel("FOOTER_LINK", g_panelX + S(12), g_panelY + S(336), "Author: jpXCode | https://jpxcode.pages.dev", clrSlateGray, 7, false);
 
    // 7. Update Chart Lines
    if(InpShowReservLine)

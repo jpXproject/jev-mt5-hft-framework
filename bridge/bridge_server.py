@@ -326,24 +326,46 @@ def mt5_live_poller():
                         tr_vals = [max(r['high'] - r['low'], abs(r['high'] - r['close'])) for r in rates[-14:]]
                         atr = sum(tr_vals) / len(tr_vals) if tr_vals else 0.50
 
+                    # Min SL & TP buffers (Consistent with MQL5 HUD)
                     sl_dist = max(atr * 2.2, 0.850)
                     tp_dist = max(atr * 3.8, 1.500)
                     is_bull = (mid >= vwap)
 
-                    # Calculate Market Power & Strength (BUY vs SELL: 0-100%)
-                    strength_score = 50.0
-                    vwap_diff = (mid - vwap)
-                    strength_score += max(-20.0, min(20.0, (vwap_diff / (atr if atr > 0 else 1.0)) * 20.0))
-                    if rates is not None and len(rates) >= 4:
-                        bar_delta = rates[-1]['close'] - rates[-4]['close']
-                        strength_score += max(-15.0, min(15.0, (bar_delta / (atr if atr > 0 else 1.0)) * 15.0))
-                    skew_diff = (mid - reserv_price)
-                    strength_score += max(-15.0, min(15.0, skew_diff * 10.0))
+                    # Multi-Timeframe (MTF) Strength Analysis: M1, M5, M15, H1
+                    def get_tf_power(tf, lookback=20):
+                        r_tf = mt5.copy_rates_from_pos(symbol, tf, 0, lookback)
+                        if r_tf is None or len(r_tf) < 5:
+                            return 50.0, 50.0, "NEUTRAL"
+                        c_curr = r_tf[-1]['close']
+                        o_curr = r_tf[-1]['open']
+                        c_prev = r_tf[-2]['close']
+                        sma_tf = sum(r['close'] for r in r_tf[-14:]) / min(len(r_tf), 14)
+                        
+                        score = 50.0
+                        # Candle direction
+                        score += 15.0 if c_curr > o_curr else (-15.0 if c_curr < o_curr else 0.0)
+                        # Price vs SMA
+                        score += 15.0 if mid > sma_tf else (-15.0 if mid < sma_tf else 0.0)
+                        # Momentum delta 4 bars
+                        if len(r_tf) >= 4:
+                            delta_4 = c_curr - r_tf[-4]['close']
+                            score += max(-15.0, min(15.0, (delta_4 / (atr if atr > 0 else 1.0)) * 15.0))
+                        
+                        bp = round(max(5.0, min(95.0, score)), 1)
+                        sp = round(100.0 - bp, 1)
+                        lbl = "BULLISH" if bp >= 58.0 else ("BEARISH" if bp <= 42.0 else "NEUTRAL")
+                        return bp, sp, lbl
 
-                    buy_power = round(max(5.0, min(95.0, strength_score)), 1)
-                    sell_power = round(100.0 - buy_power, 1)
-                    dominant_power = "BUY" if buy_power >= 50.0 else "SELL"
-                    strength_label = "BULLISH DOMINANT" if buy_power >= 60.0 else ("BEARISH DOMINANT" if buy_power <= 40.0 else "NEUTRAL / CHOPPY")
+                    m1_buy, m1_sell, m1_lbl = get_tf_power(mt5.TIMEFRAME_M1)
+                    m5_buy, m5_sell, m5_lbl = get_tf_power(mt5.TIMEFRAME_M5)
+                    m15_buy, m15_sell, m15_lbl = get_tf_power(mt5.TIMEFRAME_M15)
+                    h1_buy, h1_sell, h1_lbl = get_tf_power(mt5.TIMEFRAME_H1)
+
+                    # Weighted Composite Power
+                    comp_buy = round((m1_buy * 0.20) + (m5_buy * 0.35) + (m15_buy * 0.25) + (h1_buy * 0.20), 1)
+                    comp_sell = round(100.0 - comp_buy, 1)
+                    comp_dom = "BUY" if comp_buy >= 50.0 else "SELL"
+                    comp_label = "BULLISH DOMINANT" if comp_buy >= 58.0 else ("BEARISH DOMINANT" if comp_buy <= 42.0 else "NEUTRAL / CHOPPY")
 
                     snap = {
                         "as_of": int(tick.time),
@@ -373,10 +395,17 @@ def mt5_live_poller():
                             "stage": rec_stage
                         },
                         "strength": {
-                            "buy_pct": buy_power,
-                            "sell_pct": sell_power,
-                            "dominant": dominant_power,
-                            "label": strength_label
+                            "buy_pct": comp_buy,
+                            "sell_pct": comp_sell,
+                            "dominant": comp_dom,
+                            "label": comp_label
+                        },
+                        "mtf_strength": {
+                            "M1": {"buy": m1_buy, "sell": m1_sell, "label": m1_lbl},
+                            "M5": {"buy": m5_buy, "sell": m5_sell, "label": m5_lbl},
+                            "M15": {"buy": m15_buy, "sell": m15_sell, "label": m15_lbl},
+                            "H1": {"buy": h1_buy, "sell": h1_sell, "label": h1_lbl},
+                            "overall": {"buy": comp_buy, "sell": comp_sell, "label": comp_label}
                         },
                         "suggestions": {
                             "bias": "BUY" if is_bull else "SELL",
@@ -394,6 +423,39 @@ def mt5_live_poller():
                             }
                         }
                     }
+
+                    # Write synchronization JSON file for MT5 On-Chart HUD
+                    try:
+                        sync_payload = json.dumps({
+                            "mid": round(mid, 3),
+                            "reserv": round(reserv_price, 3),
+                            "vwap": round(vwap, 3),
+                            "buy_power": comp_buy,
+                            "sell_power": comp_sell,
+                            "m1_buy": m1_buy,
+                            "m5_buy": m5_buy,
+                            "m15_buy": m15_buy,
+                            "h1_buy": h1_buy,
+                            "bias": "BUY" if is_bull else "SELL",
+                            "buy_sl": round(tick.ask - sl_dist, 3),
+                            "buy_tp": round(tick.ask + tp_dist, 3),
+                            "sell_sl": round(tick.bid + sl_dist, 3),
+                            "sell_tp": round(tick.bid - tp_dist, 3),
+                            "atr": round(atr, 3),
+                            "balance": round(acc.balance, 2),
+                            "equity": round(acc.equity, 2),
+                            "timestamp": time.time()
+                        })
+                        common_files = os.path.join(os.environ.get("APPDATA", ""), "MetaQuotes", "Terminal", "Common", "Files")
+                        if os.path.exists(common_files):
+                            with open(os.path.join(common_files, "jev_telemetry.json"), "w", encoding="utf-8") as sf:
+                                sf.write(sync_payload)
+                        term_files = os.path.join(os.environ.get("APPDATA", ""), "MetaQuotes", "Terminal", "D0E8209F77C8CF37AD8BF550E51FF075", "MQL5", "Files")
+                        if os.path.exists(term_files):
+                            with open(os.path.join(term_files, "jev_telemetry.json"), "w", encoding="utf-8") as tf:
+                                tf.write(sync_payload)
+                    except Exception:
+                        pass
 
                     # Fetch closed deals (every 2 seconds)
                     if time.time() - last_eval_time > 2.0:
