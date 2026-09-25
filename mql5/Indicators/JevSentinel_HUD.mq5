@@ -172,7 +172,7 @@ void CreatePanel()
    ObjectSetInteger(0, bgName, OBJPROP_XDISTANCE, g_panelX);
    ObjectSetInteger(0, bgName, OBJPROP_YDISTANCE, g_panelY);
    ObjectSetInteger(0, bgName, OBJPROP_XSIZE, S(310));
-   ObjectSetInteger(0, bgName, OBJPROP_YSIZE, S(385));
+   ObjectSetInteger(0, bgName, OBJPROP_YSIZE, S(435));
    ObjectSetInteger(0, bgName, OBJPROP_BGCOLOR, InpBgColor);
    ObjectSetInteger(0, bgName, OBJPROP_BORDER_COLOR, InpBorderColor);
 
@@ -197,10 +197,69 @@ void CreatePanel()
    CreateButton("BTN_SC_R", g_panelX + S(234), g_panelY + S(3), S(38), S(22), "100%", C'35,45,65', clrWhite, 7);
    CreateButton("BTN_SC_P", g_panelX + S(274), g_panelY + S(3), S(32), S(22), "+25%", C'35,45,65', clrAqua, 7);
 
-   // Interactive Execution & Action Buttons (Repositioned to Y+262)
-   CreateButton("BTN_BUY", g_panelX + S(12), g_panelY + S(262), S(90), S(28), "BUY 0.01", C'5,150,105', clrWhite, 8);
-   CreateButton("BTN_SELL", g_panelX + S(108), g_panelY + S(262), S(90), S(28), "SELL 0.01", C'220,38,38', clrWhite, 8);
-   CreateButton("BTN_COPY", g_panelX + S(204), g_panelY + S(262), S(94), S(28), "COPY SL/TP", C'30,58,138', clrWhite, 8);
+   // Interactive Execution & Action Buttons (Repositioned to Y+308)
+   CreateButton("BTN_BUY", g_panelX + S(12), g_panelY + S(308), S(90), S(28), "BUY 0.01", C'5,150,105', clrWhite, 8);
+   CreateButton("BTN_SELL", g_panelX + S(108), g_panelY + S(308), S(90), S(28), "SELL 0.01", C'220,38,38', clrWhite, 8);
+   CreateButton("BTN_COPY", g_panelX + S(204), g_panelY + S(308), S(94), S(28), "COPY SL/TP", C'30,58,138', clrWhite, 8);
+}
+
+//+------------------------------------------------------------------+
+//| Top 1 Tool: Order Flow Point of Control (POC) Profile            |
+//+------------------------------------------------------------------+
+double CalcPOC(int bars = 24)
+{
+   double high[], low[], close[];
+   long vol[];
+   ArraySetAsSeries(high, true);
+   ArraySetAsSeries(low, true);
+   ArraySetAsSeries(close, true);
+   ArraySetAsSeries(vol, true);
+
+   if(CopyHigh(_Symbol, _Period, 0, bars, high) <= 0) return 0.0;
+   CopyLow(_Symbol, _Period, 0, bars, low);
+   CopyClose(_Symbol, _Period, 0, bars, close);
+   CopyTickVolume(_Symbol, _Period, 0, bars, vol);
+
+   double sum_vol_price = 0.0;
+   long total_vol = 0;
+   for(int i = 0; i < bars; i++)
+   {
+      double mid = (high[i] + low[i] + close[i]) / 3.0;
+      sum_vol_price += (mid * (double)vol[i]);
+      total_vol += vol[i];
+   }
+   if(total_vol > 0)
+      return NormalizeDouble(sum_vol_price / (double)total_vol, (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS));
+   return 0.0;
+}
+
+//+------------------------------------------------------------------+
+//| Top 2 Tool: Smart Money Concept (SMC) Fair Value Gap (FVG)       |
+//+------------------------------------------------------------------+
+string DetectFVG(ENUM_TIMEFRAMES tf, double &gap_top, double &gap_bottom)
+{
+   double high[], low[];
+   ArraySetAsSeries(high, true);
+   ArraySetAsSeries(low, true);
+
+   if(CopyHigh(_Symbol, tf, 0, 4, high) < 4 || CopyLow(_Symbol, tf, 0, 4, low) < 4)
+      return "BALANCED";
+
+   // Bullish FVG: Low of bar 1 > High of bar 3 (or Low[0] > High[2])
+   if(low[1] > high[3])
+   {
+      gap_bottom = high[3];
+      gap_top = low[1];
+      return "BULLISH GAP";
+   }
+   // Bearish FVG: High of bar 1 < Low of bar 3
+   if(high[1] < low[3])
+   {
+      gap_top = low[3];
+      gap_bottom = high[1];
+      return "BEARISH GAP";
+   }
+   return "BALANCED";
 }
 
 //+------------------------------------------------------------------+
@@ -400,22 +459,41 @@ void UpdateHUD()
    string bias_str = StringFormat("🎯 Bias: %s (R:R 1:2.13)", dominant_bias);
    CreateLabel("BIAS", g_panelX + S(12), g_panelY + S(182), bias_str, bias_color, 9, true);
 
-   // 5. Battery & Volatility
+   // 5. TOP 3 TOOLS SECTION: Order Flow POC & SMC FVG
+   double poc_level = CalcPOC(24);
+   double gap_top = 0.0, gap_bottom = 0.0;
+   string fvg_status = DetectFVG(PERIOD_M15, gap_top, gap_bottom);
+   color fvg_clr = (fvg_status == "BULLISH GAP") ? InpAccentGreen : ((fvg_status == "BEARISH GAP") ? InpAccentRed : clrSilver);
+
+   CreateLabel("SEP2", g_panelX + S(12), g_panelY + S(200), "── TOP 3 QUANT UTILITY TOOLS ──", clrGray, 8, true);
+   
+   string poc_str = StringFormat("1. POC (Vol Profile): %.3f", (poc_level > 0.0 ? poc_level : snap.mid_price));
+   CreateLabel("TOOL_POC", g_panelX + S(12), g_panelY + S(216), poc_str, clrPlum, 8, true);
+
+   string fvg_str = StringFormat("2. SMC FVG (M15): %s", fvg_status);
+   CreateLabel("TOOL_FVG", g_panelX + S(12), g_panelY + S(234), fvg_str, fvg_clr, 8, true);
+
+   string tm_str = "3. Auto-BE & Partial TP: AKTIF (50% Lock)";
+   CreateLabel("TOOL_TM", g_panelX + S(12), g_panelY + S(252), tm_str, clrAqua, 8, true);
+
+   // 6. Battery & Volatility
    string dir_str = StringFormat("ATR: %.3f | Vol Buffer: %.0f pts", atr_val, sl_dist / point);
-   CreateLabel("FLOW", g_panelX + S(12), g_panelY + S(202), dir_str, clrLightSlateGray, 8);
+   CreateLabel("FLOW", g_panelX + S(12), g_panelY + S(270), dir_str, clrLightSlateGray, 8);
 
-   string rec_str = StringFormat("Target Recovery: 1,000 USC | Skala: %s", sc_pct);
-   CreateLabel("REC_GOAL", g_panelX + S(12), g_panelY + S(220), rec_str, clrGold, 8, true);
+   string rec_str = StringFormat("Target: 1,000 USC | Skala: %s", sc_pct);
+   CreateLabel("REC_GOAL", g_panelX + S(12), g_panelY + S(288), rec_str, clrGold, 8, true);
 
-   string stat_str = "Geser Header untuk Drag | Klik Tombol Aksi:";
-   CreateLabel("BTN_HINT", g_panelX + S(12), g_panelY + S(238), stat_str, clrLightSteelBlue, 8, false);
+   // 7. Action Feedback Label & Author Brand Legacy
+   CreateLabel("ACTION_FEEDBACK", g_panelX + S(12), g_panelY + S(342), "Siap eksekusi / copy", clrDarkGray, 8, false);
+   CreateLabel("FOOTER_BRAND", g_panelX + S(12), g_panelY + S(364), "⚡ jpXCode Pro © 2026 | All Rights Reserved", clrDarkCyan, 7, true);
+   CreateLabel("FOOTER_LINK", g_panelX + S(12), g_panelY + S(382), "Author: jpXCode | https://jpxcode.pages.dev", clrSlateGray, 7, false);
 
-   // 6. Action Feedback Label & Author Brand Legacy
-   CreateLabel("ACTION_FEEDBACK", g_panelX + S(12), g_panelY + S(296), "Siap eksekusi / copy", clrDarkGray, 8, false);
-   CreateLabel("FOOTER_BRAND", g_panelX + S(12), g_panelY + S(318), "⚡ jpXCode Pro © 2026 | All Rights Reserved", clrDarkCyan, 7, true);
-   CreateLabel("FOOTER_LINK", g_panelX + S(12), g_panelY + S(336), "Author: jpXCode | https://jpxcode.pages.dev", clrSlateGray, 7, false);
+   // 8. Update Chart Lines (Including POC line)
+   if(poc_level > 0.0)
+   {
+      UpdateChartLine("POC_LINE", poc_level, clrPlum, STYLE_DASH, StringFormat("Order Flow POC (%.3f)", poc_level));
+   }
 
-   // 7. Update Chart Lines
    if(InpShowReservLine)
    {
       UpdateChartLine("RESERV_LINE", r_price, InpReservLineColor, STYLE_DASH, "Jev Reservation Price");
@@ -534,7 +612,7 @@ void OnChartEvent(const int id,
                                     g_last_buy_sl, g_last_buy_tp, g_last_sell_sl, g_last_sell_tp);
          Print("📋 [COPY_SLTP]: ", text);
          Alert("📋 NILAI DISALIN KE LOG:\n", text);
-         CreateLabel("ACTION_FEEDBACK", g_panelX + S(12), g_panelY + S(294), "✅ SL/TP dicetak ke Terminal Log", clrAqua, 8, true);
+         CreateLabel("ACTION_FEEDBACK", g_panelX + S(12), g_panelY + S(342), "✅ SL/TP dicetak ke Terminal Log", clrAqua, 8, true);
          ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
          ChartRedraw();
       }
@@ -542,14 +620,14 @@ void OnChartEvent(const int id,
       else if(sparam == PREFIX + "BTN_BUY")
       {
          Alert("🟢 [BUY CLICKED]: Saran BUY SL: ", g_last_buy_sl, " TP: ", g_last_buy_tp);
-         CreateLabel("ACTION_FEEDBACK", g_panelX + S(12), g_panelY + S(294), "🟢 BUY Triggered (Gunakan Web/EA)", InpAccentGreen, 8, true);
+         CreateLabel("ACTION_FEEDBACK", g_panelX + S(12), g_panelY + S(342), "🟢 BUY Triggered (Gunakan Web/EA)", InpAccentGreen, 8, true);
          ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
          ChartRedraw();
       }
       else if(sparam == PREFIX + "BTN_SELL")
       {
          Alert("🔴 [SELL CLICKED]: Saran SELL SL: ", g_last_sell_sl, " TP: ", g_last_sell_tp);
-         CreateLabel("ACTION_FEEDBACK", g_panelX + S(12), g_panelY + S(294), "🔴 SELL Triggered (Gunakan Web/EA)", InpAccentRed, 8, true);
+         CreateLabel("ACTION_FEEDBACK", g_panelX + S(12), g_panelY + S(342), "🔴 SELL Triggered (Gunakan Web/EA)", InpAccentRed, 8, true);
          ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
          ChartRedraw();
       }

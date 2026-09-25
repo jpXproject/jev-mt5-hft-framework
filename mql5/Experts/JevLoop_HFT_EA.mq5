@@ -34,6 +34,14 @@ input double   InpMaxLotCap         = 0.10;          // Absolute Max Lot Cap
 input double   InpMinMarginLevel    = 200.0;         // Min Margin Level %
 input int      InpMaxLatencyMs      = 800;           // Max Response Deadline (ms)
 
+input group "=== Top 3 Market Utility Tools Integration ==="
+input bool     InpUsePOCFilter      = true;          // Tool 1: Order Flow Volume Profile POC Filter
+input int      InpPOCLookbackBars   = 24;            // Periode Lookback Bar POC
+input bool     InpUseFVGFilter      = true;          // Tool 2: SMC Fair Value Gap (FVG) Filter
+input bool     InpUsePartialTP      = true;          // Tool 3: Advanced Trade Manager Partial TP (50% close)
+input bool     InpUseDynamicTrailing= true;          // Tool 3: Dynamic Trailing Stop Shield
+input int      InpTrailingStepPts   = 50;            // Step Trailing Stop Points
+
 input group "=== Avellaneda-Stoikov Pricing ==="
 input double   InpGamma             = 0.1;           // Risk Aversion (gamma)
 input double   InpSigma             = 0.02;          // Volatility estimate (sigma)
@@ -256,6 +264,53 @@ void OnTimer()
 }
 
 //+------------------------------------------------------------------+
+//| Top 1 Tool: Order Flow Point of Control (POC) Profile            |
+//+------------------------------------------------------------------+
+double CalcEAPOC(int bars = 24)
+{
+   double high[], low[], close[];
+   long vol[];
+   ArraySetAsSeries(high, true);
+   ArraySetAsSeries(low, true);
+   ArraySetAsSeries(close, true);
+   ArraySetAsSeries(vol, true);
+
+   if(CopyHigh(_Symbol, _Period, 0, bars, high) <= 0) return 0.0;
+   CopyLow(_Symbol, _Period, 0, bars, low);
+   CopyClose(_Symbol, _Period, 0, bars, close);
+   CopyTickVolume(_Symbol, _Period, 0, bars, vol);
+
+   double sum_vol_price = 0.0;
+   long total_vol = 0;
+   for(int i = 0; i < bars; i++)
+   {
+      double mid = (high[i] + low[i] + close[i]) / 3.0;
+      sum_vol_price += (mid * (double)vol[i]);
+      total_vol += vol[i];
+   }
+   if(total_vol > 0)
+      return NormalizeDouble(sum_vol_price / (double)total_vol, _Digits);
+   return 0.0;
+}
+
+//+------------------------------------------------------------------+
+//| Top 2 Tool: Smart Money Concept (SMC) Fair Value Gap (FVG)       |
+//+------------------------------------------------------------------+
+string DetectEAFVG(ENUM_TIMEFRAMES tf)
+{
+   double high[], low[];
+   ArraySetAsSeries(high, true);
+   ArraySetAsSeries(low, true);
+
+   if(CopyHigh(_Symbol, tf, 0, 4, high) < 4 || CopyLow(_Symbol, tf, 0, 4, low) < 4)
+      return "BALANCED";
+
+   if(low[1] > high[3]) return "BULLISH GAP";
+   if(high[1] < low[3]) return "BEARISH GAP";
+   return "BALANCED";
+}
+
+//+------------------------------------------------------------------+
 //| Expert tick function                                             |
 //+------------------------------------------------------------------+
 void OnTick()
@@ -265,8 +320,8 @@ void OnTick()
    double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
    double spread = (ask - bid) / point;
 
-   // 1. Auto BreakEven Management for Active Positions
-   if(InpUseBreakEven)
+   // 1. Tool 3: Advanced Trade Manager (Auto BreakEven, Partial TP & Dynamic Trailing)
+   if(InpUseBreakEven || InpUsePartialTP || InpUseDynamicTrailing)
    {
       for(int i = PositionsTotal() - 1; i >= 0; i--)
       {
@@ -277,10 +332,25 @@ void OnTick()
             double open_p = PositionGetDouble(POSITION_PRICE_OPEN);
             double cur_sl = PositionGetDouble(POSITION_SL);
             double cur_tp = PositionGetDouble(POSITION_TP);
+            double volume = PositionGetDouble(POSITION_VOLUME);
 
             if(p_type == POSITION_TYPE_BUY)
             {
-               if((bid - open_p) >= (InpBreakEvenTrigger * point))
+               double profit_pts = (bid - open_p) / point;
+
+               // Partial Take Profit (50% volume saat mencapai Trigger)
+               if(InpUsePartialTP && volume > 0.01 && profit_pts >= InpBreakEvenTrigger)
+               {
+                  double close_vol = NormalizeDouble(volume * 0.5, 2);
+                  if(close_vol >= 0.01)
+                  {
+                     if(g_trade.PositionClosePartial(ticket, close_vol))
+                        PrintFormat("[TRADE_MGR] BUY #%I64d 50%% Partial Close executed: %.2f lots at profit %.1f pts", ticket, close_vol, profit_pts);
+                  }
+               }
+
+               // BreakEven Shield
+               if(InpUseBreakEven && profit_pts >= InpBreakEvenTrigger)
                {
                   double new_sl = NormalizeDouble(open_p + (InpBreakEvenLock * point), _Digits);
                   if(cur_sl < new_sl || cur_sl == 0.0)
@@ -289,16 +359,52 @@ void OnTick()
                      PrintFormat("[BE_SHIELD] BUY #%I64d SL moved to BreakEven: %.5f", ticket, new_sl);
                   }
                }
+
+               // Dynamic Trailing Stop
+               if(InpUseDynamicTrailing && profit_pts >= (InpBreakEvenTrigger + InpTrailingStepPts))
+               {
+                  double trail_sl = NormalizeDouble(bid - (InpBreakEvenTrigger * point), _Digits);
+                  if(trail_sl > cur_sl)
+                  {
+                     g_trade.PositionModify(ticket, trail_sl, cur_tp);
+                     PrintFormat("[TRAILING_STOP] BUY #%I64d Trailing SL updated to %.5f", ticket, trail_sl);
+                  }
+               }
             }
             else if(p_type == POSITION_TYPE_SELL)
             {
-               if((open_p - ask) >= (InpBreakEvenTrigger * point))
+               double profit_pts = (open_p - ask) / point;
+
+               // Partial Take Profit (50% volume saat mencapai Trigger)
+               if(InpUsePartialTP && volume > 0.01 && profit_pts >= InpBreakEvenTrigger)
+               {
+                  double close_vol = NormalizeDouble(volume * 0.5, 2);
+                  if(close_vol >= 0.01)
+                  {
+                     if(g_trade.PositionClosePartial(ticket, close_vol))
+                        PrintFormat("[TRADE_MGR] SELL #%I64d 50%% Partial Close executed: %.2f lots at profit %.1f pts", ticket, close_vol, profit_pts);
+                  }
+               }
+
+               // BreakEven Shield
+               if(InpUseBreakEven && profit_pts >= InpBreakEvenTrigger)
                {
                   double new_sl = NormalizeDouble(open_p - (InpBreakEvenLock * point), _Digits);
                   if(cur_sl > new_sl || cur_sl == 0.0)
                   {
                      g_trade.PositionModify(ticket, new_sl, cur_tp);
                      PrintFormat("[BE_SHIELD] SELL #%I64d SL moved to BreakEven: %.5f", ticket, new_sl);
+                  }
+               }
+
+               // Dynamic Trailing Stop
+               if(InpUseDynamicTrailing && profit_pts >= (InpBreakEvenTrigger + InpTrailingStepPts))
+               {
+                  double trail_sl = NormalizeDouble(ask + (InpBreakEvenTrigger * point), _Digits);
+                  if(cur_sl == 0.0 || trail_sl < cur_sl)
+                  {
+                     g_trade.PositionModify(ticket, trail_sl, cur_tp);
+                     PrintFormat("[TRAILING_STOP] SELL #%I64d Trailing SL updated to %.5f", ticket, trail_sl);
                   }
                }
             }
@@ -333,6 +439,10 @@ void OnTick()
    }
    if(open_positions > 0) return;
 
+   // Top 1 & Top 2 Confluence Indicators
+   double poc = InpUsePOCFilter ? CalcEAPOC(InpPOCLookbackBars) : 0.0;
+   string fvg = InpUseFVGFilter ? DetectEAFVG(PERIOD_M15) : "BALANCED";
+
    // Determine order parameters
    double order_lot = InpBaseLot;
    if(state == FALLBACK_REDUCE)
@@ -343,28 +453,41 @@ void OnTick()
    ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
    bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
 
+   // AI Direction & Confluence Triggers
    if(g_ai_direction == "UP" && g_ai_confidence >= 0.70)
    {
+      // Confluence Checks
+      if(InpUsePOCFilter && poc > 0.0 && ask < poc)
+         return; // Tolak Buy jika harga di bawah Point of Control (Discount trap)
+      if(InpUseFVGFilter && fvg == "BEARISH GAP")
+         return; // Tolak Buy jika ada gap ketidakseimbangan bearish M15
+
       double sl = NormalizeDouble(bid - (InpStopLossPts * point), _Digits);
       double tp = NormalizeDouble(ask + (InpTakeProfitPts * point), _Digits);
 
       ENUM_VETO_REASON veto = g_risk.EvaluateOrderVeto(_Symbol, ORDER_TYPE_BUY, order_lot, sl, g_last_latency);
       if(veto == VETO_NONE)
       {
-         if(g_trade.Buy(order_lot, _Symbol, ask, sl, tp, "Jev-MT5 BUY"))
-            PrintFormat("[EXECUTION] BUY executed: %.2f lots @ %.5f, SL: %.5f, TP: %.5f", order_lot, ask, sl, tp);
+         if(g_trade.Buy(order_lot, _Symbol, ask, sl, tp, "Jev-MT5 BUY [POC+SMC]"))
+            PrintFormat("[EXECUTION] BUY executed: %.2f lots @ %.5f, SL: %.5f, TP: %.5f | POC: %.5f | FVG: %s", order_lot, ask, sl, tp, poc, fvg);
       }
    }
    else if(g_ai_direction == "DOWN" && g_ai_confidence >= 0.70)
    {
+      // Confluence Checks
+      if(InpUsePOCFilter && poc > 0.0 && bid > poc)
+         return; // Tolak Sell jika harga di atas Point of Control (Premium trap)
+      if(InpUseFVGFilter && fvg == "BULLISH GAP")
+         return; // Tolak Sell jika ada gap ketidakseimbangan bullish M15
+
       double sl = NormalizeDouble(ask + (InpStopLossPts * point), _Digits);
       double tp = NormalizeDouble(bid - (InpTakeProfitPts * point), _Digits);
 
       ENUM_VETO_REASON veto = g_risk.EvaluateOrderVeto(_Symbol, ORDER_TYPE_SELL, order_lot, sl, g_last_latency);
       if(veto == VETO_NONE)
       {
-         if(g_trade.Sell(order_lot, _Symbol, bid, sl, tp, "Jev-MT5 SELL"))
-            PrintFormat("[EXECUTION] SELL executed: %.2f lots @ %.5f, SL: %.5f, TP: %.5f", order_lot, bid, sl, tp);
+         if(g_trade.Sell(order_lot, _Symbol, bid, sl, tp, "Jev-MT5 SELL [POC+SMC]"))
+            PrintFormat("[EXECUTION] SELL executed: %.2f lots @ %.5f, SL: %.5f, TP: %.5f | POC: %.5f | FVG: %s", order_lot, bid, sl, tp, poc, fvg);
       }
    }
 }
